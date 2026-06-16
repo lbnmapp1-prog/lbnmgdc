@@ -1,4 +1,4 @@
-export const AT_TOKEN = 'pathei6xJMyKgFRJk.07f6a0efda090bffb60cd61e59f79bf6cfd5e33233ad81445df994271d802df2'; // Reemplaza con tu Personal Access Token de airtable.com/create/tokens
+export const AT_TOKEN = 'patONLilEuhcfVDWr.b4695f9d133de2020b05102c4d31d80e146617a9ecf05b83a6c17276b757d9a5'; // Reemplaza con tu Personal Access Token de airtable.com/create/tokens
 
 export const BASE_ID = 'apppQCdCQ211ydjbA';
 export const TABLES = {
