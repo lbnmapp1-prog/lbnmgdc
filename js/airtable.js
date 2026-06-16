@@ -1,10 +1,10 @@
-export const AT_TOKEN = 'TU_AIRTABLE_TOKEN'; // Reemplaza con tu Personal Access Token de airtable.com/create/tokens
+export const AT_TOKEN = 'pathei6xJMyKgFRJk.07f6a0efda090bffb60cd61e59f79bf6cfd5e33233ad81445df994271d802df2'; // Reemplaza con tu Personal Access Token de airtable.com/create/tokens
 
-export const BASE_ID  = 'apppQCdCQ211ydjbA';
-export const TABLES   = {
-  grupos:   'tblCchzDiLhWuag4T',
+export const BASE_ID = 'apppQCdCQ211ydjbA';
+export const TABLES = {
+  grupos: 'tblCchzDiLhWuag4T',
   miembros: 'tblVb1G0mMIwCDPwi',
-  eventos:  'tbl3kJkuFevmo38DV',
+  eventos: 'tbl3kJkuFevmo38DV',
 };
 
 const BASE_URL = `https://api.airtable.com/v0/${BASE_ID}`;
