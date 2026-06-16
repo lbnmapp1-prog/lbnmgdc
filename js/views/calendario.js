@@ -1,4 +1,5 @@
 import { getEventos, createEvento, deleteEvento } from '../db.js';
+import { isAdmin } from '../main.js';
 
 const DAYS = ['L','M','X','J','V','S','D'];
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -63,7 +64,34 @@ export async function renderCalendario(container, navigate) {
           <div class="cal-cells">${cells}</div>
         </div>
         <div class="flex-col gap-14">
-          <div class="card"><div class="card-title" style="margin-bottom:16px;">Eventos del mes</div><div class="cal-event-list">${evList}</div></div>
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div class="card-title">Eventos del mes</div>
+              ${isAdmin() ? `<button class="btn-primary sm" id="btn-show-form">+ Agregar</button>` : ''}
+            </div>
+            <div id="form-evento" style="display:none;margin-bottom:16px;">
+              <div class="form-section" style="padding:14px;margin-bottom:0;">
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                  <input id="ev-titulo" placeholder="Título del evento" style="padding:9px 12px;border:1px solid #d7dde6;border-radius:9px;font-size:13.5px;outline:none;" />
+                  <input id="ev-fecha" type="date" style="padding:9px 12px;border:1px solid #d7dde6;border-radius:9px;font-size:13.5px;outline:none;" />
+                  <input id="ev-hora" placeholder="Hora (ej: 7:00 PM)" style="padding:9px 12px;border:1px solid #d7dde6;border-radius:9px;font-size:13.5px;outline:none;" />
+                  <input id="ev-lugar" placeholder="Lugar" style="padding:9px 12px;border:1px solid #d7dde6;border-radius:9px;font-size:13.5px;outline:none;" />
+                  <select id="ev-tipo" style="padding:9px 12px;border:1px solid #d7dde6;border-radius:9px;font-size:13.5px;outline:none;">
+                    <option value="reunion">Reunión</option>
+                    <option value="evento">Evento especial</option>
+                    <option value="servicio">Servicio general</option>
+                    <option value="capacitacion">Capacitación</option>
+                    <option value="retiro">Retiro</option>
+                  </select>
+                  <div style="display:flex;gap:8px;">
+                    <button class="btn-secondary" id="btn-cancel-ev" style="flex:1;justify-content:center;">Cancelar</button>
+                    <button class="btn-primary" id="btn-save-ev" style="flex:1;">Guardar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cal-event-list">${evList}</div>
+          </div>
           <div class="card">
             <div class="card-title" style="margin-bottom:12px;">Leyenda</div>
             <div class="flex-col gap-8">
@@ -83,6 +111,29 @@ export async function renderCalendario(container, navigate) {
     });
     container.querySelector('#cal-next')?.addEventListener('click', () => {
       calState.m++; if (calState.m > 11) { calState.m = 0; calState.y++; } render();
+    });
+
+    const formEl = container.querySelector('#form-evento');
+    container.querySelector('#btn-show-form')?.addEventListener('click', () => {
+      formEl.style.display = formEl.style.display === 'none' ? '' : 'none';
+    });
+    container.querySelector('#btn-cancel-ev')?.addEventListener('click', () => {
+      formEl.style.display = 'none';
+    });
+    container.querySelector('#btn-save-ev')?.addEventListener('click', async () => {
+      const titulo = container.querySelector('#ev-titulo').value.trim();
+      const fecha  = container.querySelector('#ev-fecha').value;
+      if (!titulo || !fecha) return;
+      const btn = container.querySelector('#btn-save-ev');
+      btn.textContent = 'Guardando...'; btn.disabled = true;
+      await createEvento({
+        titulo,
+        fecha,
+        hora:  container.querySelector('#ev-hora').value,
+        lugar: container.querySelector('#ev-lugar').value,
+        tipo:  container.querySelector('#ev-tipo').value,
+      });
+      render();
     });
   }
 

@@ -110,9 +110,8 @@ document.getElementById('btn-login')?.addEventListener('click', async () => {
 });
 
 // ===== LOGOUT =====
-document.getElementById('btn-logout')?.addEventListener('click', async () => {
-  await logout();
-});
+document.getElementById('btn-logout')?.addEventListener('click', async () => { await logout(); });
+document.getElementById('btn-logout-mobile')?.addEventListener('click', async () => { await logout(); });
 
 // ===== SIDEBAR NAV =====
 document.querySelectorAll('.nav-item[data-page]').forEach(el => {
