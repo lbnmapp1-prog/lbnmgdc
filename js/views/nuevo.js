@@ -20,6 +20,46 @@ export async function renderNuevo(container, navigate, params = {}) {
   let selectedTemps = f.temperamentos || [];
   let selectedMs = f.nivel_idx != null ? MILESTONES.slice(0, f.nivel_idx + 1).map((_,i)=>i) : [];
 
+  function renderChips() {
+    const wrap = container.querySelector('#temp-chips');
+    if (!wrap) return;
+    wrap.innerHTML = TEMPS.map(t => {
+      const sel = selectedTemps.includes(t.c);
+      return `<div class="temp-chip${sel?' selected':''}" data-temp="${t.c}">
+        <div class="tc-box">${sel?`<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>`:''}</div>
+        <span>${t.l}</span>
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('.temp-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const c = chip.dataset.temp;
+        if (selectedTemps.includes(c)) selectedTemps = selectedTemps.filter(x=>x!==c);
+        else selectedTemps.push(c);
+        renderChips();
+      });
+    });
+  }
+
+  function renderMilestones() {
+    const grid = container.querySelector('#ms-grid');
+    if (!grid) return;
+    grid.innerHTML = MILESTONES.map((ml, i) => {
+      const done = selectedMs.includes(i);
+      return `<div class="checkbox-item${done?' checked':''}" data-ms="${i}">
+        <div class="cb-box">${done?`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>`:''}</div>
+        <div><div class="cb-label">${ml.t}</div><div class="cb-sub">${ml.s}</div></div>
+      </div>`;
+    }).join('');
+    grid.querySelectorAll('.checkbox-item[data-ms]').forEach(item => {
+      item.addEventListener('click', () => {
+        const i = parseInt(item.dataset.ms);
+        if (selectedMs.includes(i)) selectedMs = selectedMs.filter(x=>x!==i);
+        else selectedMs.push(i);
+        renderMilestones();
+      });
+    });
+  }
+
   function renderForm() {
     const grupoOptions = grupos.map(g => `<option value="${g.id}" ${f.grupo_id===g.id?'selected':''}>${g.nombre}</option>`).join('');
 
@@ -114,23 +154,23 @@ export async function renderNuevo(container, navigate, params = {}) {
       </div>
     </div>`;
 
-    // Temperamentos
+    // Temperamentos — solo re-renderiza los chips
     container.querySelectorAll('.temp-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const c = chip.dataset.temp;
         if (selectedTemps.includes(c)) selectedTemps = selectedTemps.filter(x=>x!==c);
         else selectedTemps.push(c);
-        renderForm();
+        renderChips();
       });
     });
 
-    // Milestones
+    // Milestones — solo re-renderiza los hitos
     container.querySelectorAll('.checkbox-item[data-ms]').forEach(item => {
       item.addEventListener('click', () => {
         const i = parseInt(item.dataset.ms);
         if (selectedMs.includes(i)) selectedMs = selectedMs.filter(x=>x!==i);
         else selectedMs.push(i);
-        renderForm();
+        renderMilestones();
       });
     });
 
