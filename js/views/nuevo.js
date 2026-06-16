@@ -1,4 +1,5 @@
 import { getGrupos, createMiembro, getMiembro, updateMiembro } from '../db.js';
+import { getCurrentProfile, isAdmin, getCurrentGrupoId } from '../main.js';
 
 const MILESTONES = [
   { t:'Integración', s:'Alpha / MADE' }, { t:'Bautismo', s:'Bautizado en agua' },
@@ -13,7 +14,11 @@ const APOYO = ['Cómo controlar la ira','Sanidad para el corazón herido','Super
 
 export async function renderNuevo(container, navigate, params = {}) {
   container.innerHTML = `<div class="spinner">Cargando...</div>`;
-  const grupos = await getGrupos();
+  let grupos = await getGrupos();
+  if (!isAdmin()) {
+    const gid = getCurrentGrupoId();
+    grupos = grupos.filter(g => g.id === gid);
+  }
   const editId = params.editId || null;
   let existing = null;
   if (editId) existing = await getMiembro(editId);
@@ -164,6 +169,16 @@ export async function renderNuevo(container, navigate, params = {}) {
               </select>
             </div>
             <div class="form-group"><label>Grupo de Cuidado *</label><select id="f-grupo">${grupoOptions}</select></div>
+            <div class="form-group"><label>Sede asignada</label>
+              <select id="f-sede">
+                <option value="">— Seleccionar —</option>
+                <option value="Sede Este" ${f.sede==='Sede Este'?'selected':''}>Sede Este</option>
+                <option value="Sede Oeste" ${f.sede==='Sede Oeste'?'selected':''}>Sede Oeste</option>
+                <option value="Sede Cabudare" ${f.sede==='Sede Cabudare'?'selected':''}>Sede Cabudare</option>
+                <option value="Sede 48" ${f.sede==='Sede 48'?'selected':''}>Sede 48</option>
+                <option value="Sede 52" ${f.sede==='Sede 52'?'selected':''}>Sede 52</option>
+              </select>
+            </div>
             <div class="form-group"><label>Padre / Madre espiritual</label><input id="f-padre-esp" value="${f.padre_esp||''}" placeholder="Nombre" /></div>
             <div class="form-group"><label>Inicio de discipulado</label><input id="f-disc-inicio" value="${f.disc_inicio||''}" placeholder="MM/AAAA" /></div>
             <div class="form-group"><label>¿Bautizado?</label>
@@ -245,6 +260,7 @@ export async function renderNuevo(container, navigate, params = {}) {
         direccion: container.querySelector('#f-direccion').value,
         rol: container.querySelector('#f-rol').value,
         grupo_id: container.querySelector('#f-grupo').value,
+        sede: container.querySelector('#f-sede').value,
         padre_esp: container.querySelector('#f-padre-esp').value,
         disc_inicio: container.querySelector('#f-disc-inicio').value,
         bautizado: container.querySelector('#f-bautizado').value === 'true',

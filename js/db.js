@@ -2,7 +2,7 @@ import { atFetchAll, atPost, atPatch, atDelete } from './airtable.js';
 
 // ---- normalizadores ----
 function normGrupo(rec) {
-  return { id: rec.id, nombre: rec.fields.Nombre || '', sede: rec.fields.Sede || '' };
+  return { id: rec.id, nombre: rec.fields.Nombre || '', sede: rec.fields.Sede || '', _raw: rec };
 }
 
 function normMiembro(rec, gruposMap = {}) {
@@ -32,6 +32,7 @@ function normMiembro(rec, gruposMap = {}) {
     nivel_idx: f.NivelIdx ?? 0,
     cursos_completados: f.CursosCompletados || [],
     apoyo_completados: f.ApoyoCompletados || [],
+    sede: f.Sede || '',
   };
 }
 
@@ -56,6 +57,17 @@ export function invalidateGruposCache() { _gruposCache = null; }
 export async function getGrupos() {
   const map = await gruposMap();
   return Object.values(map).sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+export async function createGrupo(nombre, sede) {
+  invalidateGruposCache();
+  const res = await atPost('grupos', { records: [{ fields: { Nombre: nombre, Sede: sede } }] });
+  return normGrupo(res.records[0]);
+}
+
+export async function deleteGrupo(id) {
+  invalidateGruposCache();
+  await atDelete('grupos', id);
 }
 
 // ===== MIEMBROS =====
@@ -109,6 +121,7 @@ function toAirtableFields(fields) {
     NivelIdx: fields.nivel_idx ?? 0,
     CursosCompletados: fields.cursos_completados || [],
     ApoyoCompletados: fields.apoyo_completados || [],
+    Sede: fields.sede || '',
   };
 }
 

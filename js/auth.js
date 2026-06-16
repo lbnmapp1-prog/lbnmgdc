@@ -1,17 +1,19 @@
-// Autenticación simple — cambia APP_PASSWORD para proteger el acceso
-const APP_PASSWORD = 'LBN2025';
-const SESSION_KEY  = 'pastoreo_session';
+import { atFetchAll, atPost, atPatch, atDelete } from './airtable.js';
 
-const ADMIN_PROFILE = {
-  nombre: 'Pastor Daniel Rivas',
-  rol: 'Pastor de Área',
-};
+const SESSION_KEY = 'pastoreo_session';
+
+function normUser(rec) {
+  const f = rec.fields;
+  return { id: rec.id, nombre: f.Nombre || '', email: f.Email || '', rol: f.Rol || 'Líder de Grupo', grupoId: f.GrupoId || '' };
+}
 
 export async function login(email, password) {
-  if (password !== APP_PASSWORD) throw new Error('Contraseña incorrecta');
-  const session = { loggedIn: true, ts: Date.now() };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return session;
+  const recs = await atFetchAll('usuarios');
+  const match = recs.find(r => (r.fields.Email || '').toLowerCase() === email.toLowerCase() && r.fields.Password === password);
+  if (!match) throw new Error('Correo o contraseña incorrectos');
+  const user = normUser(match);
+  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  return user;
 }
 
 export async function logout() {
@@ -22,19 +24,35 @@ export async function logout() {
 export async function getSession() {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const s = JSON.parse(raw);
-    return s.loggedIn ? s : null;
-  } catch {
-    return null;
-  }
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 
 export async function getProfile() {
-  return ADMIN_PROFILE;
+  return getSession();
 }
 
 export function onAuthChange(callback) {
-  // No-op: la sesión se comprueba en el init, no hay cambios asíncronos
   return () => {};
+}
+
+// ===== GESTIÓN DE USUARIOS (solo Pastor/Asesor) =====
+export async function getUsuarios() {
+  const recs = await atFetchAll('usuarios');
+  return recs.map(normUser);
+}
+
+export async function createUsuario(fields) {
+  const res = await atPost('usuarios', { records: [{ fields: {
+    Nombre: fields.nombre || '',
+    Email: fields.email || '',
+    Password: fields.password || '',
+    Rol: fields.rol || 'Líder de Grupo',
+    GrupoId: fields.grupoId || '',
+  }}]});
+  return normUser(res.records[0]);
+}
+
+export async function deleteUsuario(id) {
+  await atDelete('usuarios', id);
 }

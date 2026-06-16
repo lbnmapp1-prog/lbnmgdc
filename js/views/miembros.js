@@ -1,4 +1,5 @@
 import { getMiembros, getGrupos, deleteMiembro } from '../db.js';
+import { isAdmin, getCurrentGrupoId } from '../main.js';
 
 const ROLES_ORDER = ['Líder de Grupo','Líder Asistente','Padre Espiritual','Miembro'];
 
@@ -17,8 +18,10 @@ const COLORS = ['#1e5aa8','#2f7d6b','#9a5b2b','#6b4e9a','#9a3b52','#2b6f8a','#3a
 
 export async function renderMiembros(container, navigate, params = {}) {
   container.innerHTML = `<div class="spinner">Cargando...</div>`;
-  const grupos = await getGrupos();
-  let miembros = await getMiembros(params.grupoId || null, params.search || '');
+  const todosGrupos = await getGrupos();
+  const grupoFiltro = !isAdmin() ? getCurrentGrupoId() : (params.grupoId || null);
+  const grupos = !isAdmin() ? todosGrupos.filter(g => g.id === grupoFiltro) : todosGrupos;
+  let miembros = await getMiembros(grupoFiltro, params.search || '');
 
   function html() {
     const rows = miembros.map((m, i) => {
