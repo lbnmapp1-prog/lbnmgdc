@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pastoreo GDC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ====== LOGIN ====== -->
+  <div id="view-login" class="view-login hidden">
+    <div class="login-left">
+      <div class="login-grid-bg"></div>
+      <div class="login-glow"></div>
+      <div class="login-logo-row">
+        <div class="logo-box">P</div>
+        <div>
+          <div class="login-brand">Pastoreo GDC</div>
+          <div class="login-brand-sub">Sistema de Gestión</div>
+        </div>
+      </div>
+      <div class="login-hero">
+        <div class="login-area-label">Área · Jóvenes Adultos</div>
+        <h1 class="login-title">Pastorea con orden,<br/>conoce a cada miembro.</h1>
+        <p class="login-desc">Registra a los integrantes de cada Grupo de Cuidado, sigue su ruta de crecimiento y mantén viva la estructura de liderazgo, todo en un solo lugar.</p>
+      </div>
+      <div class="login-stats">
+        <div><div class="stat-num" id="stat-total">—</div><div class="stat-label">Miembros</div></div>
+        <div><div class="stat-num" id="stat-grupos">—</div><div class="stat-label">Grupos</div></div>
+        <div><div class="stat-num" id="stat-sedes">5</div><div class="stat-label">Sedes</div></div>
+      </div>
+    </div>
+    <div class="login-right">
+      <div class="login-form-header">
+        <h2>Iniciar sesión</h2>
+        <p>Ingresa con las credenciales asignadas por tu pastor de área.</p>
+      </div>
+      <label class="field-label">Correo electrónico</label>
+      <input id="login-email" type="email" placeholder="tucorreo@gmail.com" class="field-input" />
+      <label class="field-label">Contraseña</label>
+      <input id="login-password" type="password" placeholder="••••••••" class="field-input" />
+      <div id="login-error" class="login-error hidden"></div>
+      <button id="btn-login" class="btn-primary btn-full">Ingresar al sistema</button>
+      <div class="login-divider"><span>acceso por roles</span></div>
+      <div class="role-chips">
+        <span class="role-chip chip-pastor">Pastor de Área</span>
+        <span class="role-chip chip-asesor">Líder Asesor</span>
+        <span class="role-chip chip-lider">Líder de Grupo</span>
+        <span class="role-chip chip-asistente">Líder Asistente</span>
+      </div>
+      <p class="login-footer">Pastoreo GDC · Iglesia LBN · Los miembros no acceden al sistema; su información es gestionada por sus líderes.</p>
+    </div>
+  </div>
+
+  <!-- ====== APP SHELL ====== -->
+  <div id="view-app" class="app-shell hidden">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-box sm">P</div>
+        <div>
+          <div class="sidebar-brand">Pastoreo GDC</div>
+          <div class="sidebar-brand-sub">Jóvenes Adultos</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">PRINCIPAL</div>
+        <a class="nav-item" data-page="dashboard">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.3V21h14V9.3"/></svg>
+          Inicio
+        </a>
+        <a class="nav-item" data-page="miembros">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 21v-2a4 4 0 0 0-3-3.85"/><path d="M16 3.15a4 4 0 0 1 0 7.7"/></svg>
+          Miembros
+        </a>
+        <a class="nav-item" data-page="organigrama">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="5" rx="1.2"/><rect x="2.5" y="16.5" width="6" height="5" rx="1.2"/><rect x="15.5" y="16.5" width="6" height="5" rx="1.2"/><path d="M12 7.5v4.5M5.5 16.5V13h13v3.5"/></svg>
+          Organigrama
+        </a>
+        <a class="nav-item" data-page="calendario">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.2"/><path d="M16 2.5v4M8 2.5v4M3 9.5h18"/></svg>
+          Calendario
+        </a>
+        <a class="nav-item" data-page="reportes">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="11.5" width="3" height="6.5" rx="0.6"/><rect x="12" y="7.5" width="3" height="10.5" rx="0.6"/><rect x="17" y="4.5" width="3" height="13.5" rx="0.6"/></svg>
+          Reportes
+        </a>
+        <div class="nav-section-label" style="margin-top:14px;">GESTIÓN</div>
+        <a class="nav-item" data-page="nuevo">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Nuevo registro
+        </a>
+      </nav>
+      <div class="sidebar-user">
+        <div class="sidebar-user-inner">
+          <div class="avatar sm" id="sidebar-avatar">DR</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-name">—</div>
+            <div id="sidebar-role">—</div>
+          </div>
+          <button id="btn-logout" class="btn-icon" title="Cerrar sesión">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8fa8cc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-area">
+      <header class="topbar">
+        <div>
+          <div class="topbar-title" id="page-title">Inicio</div>
+          <div class="topbar-sub" id="page-sub">Resumen general del área</div>
+        </div>
+        <div class="topbar-right">
+          <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9aa5b5" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="global-search" placeholder="Buscar miembro..." />
+          </div>
+          <div class="topbar-user">
+            <div class="avatar sm blue" id="topbar-avatar">DR</div>
+            <div>
+              <div id="topbar-name">—</div>
+              <div id="topbar-role" class="topbar-role-label">—</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-content" id="main-content">
+        <!-- Views rendered here by JS -->
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
