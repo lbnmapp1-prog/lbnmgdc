@@ -7,12 +7,18 @@ export async function renderDashboard(container, navigate) {
   container.innerHTML = `<div class="spinner">Cargando...</div>`;
 
   const now = new Date();
-  const [stats, porGrupo, eventos, cumple] = await Promise.all([
-    getStats(),
-    getMiembrosPorGrupo(),
-    getEventos(now.getFullYear(), now.getMonth()),
-    getCumpleaniosMes(now.getMonth()),
-  ]);
+  let stats, porGrupo, eventos, cumple;
+  try {
+    [stats, porGrupo, eventos, cumple] = await Promise.all([
+      getStats(),
+      getMiembrosPorGrupo(),
+      getEventos(now.getFullYear(), now.getMonth()),
+      getCumpleaniosMes(now.getMonth()),
+    ]);
+  } catch (e) {
+    container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar datos:</b><br><code style="font-size:12px;">${e.message}</code></div>`;
+    return;
+  }
 
   const maxCount = Math.max(1, ...porGrupo.map(g => g.count));
   const gruposBars = porGrupo.map((g, i) => `
