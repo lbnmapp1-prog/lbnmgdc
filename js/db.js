@@ -30,6 +30,8 @@ function normMiembro(rec, gruposMap = {}) {
     mentor: f.Mentor || '',
     oracion: f.Oracion || '',
     nivel_idx: f.NivelIdx ?? 0,
+    cursos_completados: f.CursosCompletados || [],
+    apoyo_completados: f.ApoyoCompletados || [],
   };
 }
 
@@ -105,6 +107,8 @@ function toAirtableFields(fields) {
     Mentor: fields.mentor || '',
     Oracion: fields.oracion || '',
     NivelIdx: fields.nivel_idx ?? 0,
+    CursosCompletados: fields.cursos_completados || [],
+    ApoyoCompletados: fields.apoyo_completados || [],
   };
 }
 

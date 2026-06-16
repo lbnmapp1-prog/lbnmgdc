@@ -8,6 +8,8 @@ const MILESTONES = [
   { t:'Líder de Grupo', s:'Multiplicación' },
 ];
 const TEMPS = [{ c:'M', l:'Melancólico'}, { c:'F', l:'Flemático'}, { c:'C', l:'Colérico'}, { c:'S', l:'Sanguíneo'}];
+const CURSOS = ['Alpha / MADE','Discipulado','Bautizado','Retiro VEL','Padres','2 Discipulados','Retiro Creciendo E/C','Retiro DARTE','Persp. Bíblica','Líder de Cuidado','Fac. Grupos de A.','Líder de Niños','Líder Nueva Gen','Fund. Liderazgo','Pre-Matrimonial','Nuevo Testamento','Antiguo Testamento','Oratoria','Consej. Juvenil','Ayuda P/Padres Adolesc.','Consejería I','Consejería II','Mentoría de Nov.','Arconte','Esc. Plantación'];
+const APOYO = ['Cómo controlar la ira','Sanidad para el corazón herido','Superando el duelo','Celebremos la recuperación','Una vía de escape','Llenando el vacío paternal','Sanando el vínculo materno','Noviazgo con propósito','Pre-matrimonial: una elección','Pre-matrimonial: nuevo comienzo','Matrimonio sobre la roca','Principios p/la crianza','Padres para toda la vida','Ayuda p/padres adolescentes','Victoria financiera','Vida empresarial'];
 
 export async function renderNuevo(container, navigate, params = {}) {
   container.innerHTML = `<div class="spinner">Cargando...</div>`;
@@ -19,6 +21,8 @@ export async function renderNuevo(container, navigate, params = {}) {
   const f = existing || {};
   let selectedTemps = f.temperamentos || [];
   let selectedMs = f.nivel_idx != null ? MILESTONES.slice(0, f.nivel_idx + 1).map((_,i)=>i) : [];
+  let selectedCursos = f.cursos_completados || [];
+  let selectedApoyo = f.apoyo_completados || [];
 
   function renderChips() {
     const wrap = container.querySelector('#temp-chips');
@@ -56,6 +60,46 @@ export async function renderNuevo(container, navigate, params = {}) {
         if (selectedMs.includes(i)) selectedMs = selectedMs.filter(x=>x!==i);
         else selectedMs.push(i);
         renderMilestones();
+      });
+    });
+  }
+
+  function renderCursos() {
+    const grid = container.querySelector('#cursos-grid');
+    if (!grid) return;
+    grid.innerHTML = CURSOS.map((c, i) => {
+      const done = selectedCursos.includes(c);
+      return `<div class="checkbox-item${done?' checked':''}" data-curso="${i}">
+        <div class="cb-box">${done?`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>`:''}</div>
+        <div class="cb-label">${c}</div>
+      </div>`;
+    }).join('');
+    grid.querySelectorAll('[data-curso]').forEach(item => {
+      item.addEventListener('click', () => {
+        const c = CURSOS[parseInt(item.dataset.curso)];
+        if (selectedCursos.includes(c)) selectedCursos = selectedCursos.filter(x=>x!==c);
+        else selectedCursos.push(c);
+        renderCursos();
+      });
+    });
+  }
+
+  function renderApoyo() {
+    const grid = container.querySelector('#apoyo-grid');
+    if (!grid) return;
+    grid.innerHTML = APOYO.map((a, i) => {
+      const done = selectedApoyo.includes(a);
+      return `<div class="checkbox-item${done?' checked':''}" data-apoyo="${i}">
+        <div class="cb-box">${done?`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>`:''}</div>
+        <div class="cb-label">${a}</div>
+      </div>`;
+    }).join('');
+    grid.querySelectorAll('[data-apoyo]').forEach(item => {
+      item.addEventListener('click', () => {
+        const a = APOYO[parseInt(item.dataset.apoyo)];
+        if (selectedApoyo.includes(a)) selectedApoyo = selectedApoyo.filter(x=>x!==a);
+        else selectedApoyo.push(a);
+        renderApoyo();
       });
     });
   }
@@ -147,6 +191,16 @@ export async function renderNuevo(container, navigate, params = {}) {
         <div class="checkbox-grid" id="ms-grid">${msItems}</div>
       </div>
 
+      <div class="form-section">
+        <div class="section-label">Datos ministeriales adicionales</div>
+        <div class="checkbox-grid" id="cursos-grid"></div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-label">Grupos de apoyo</div>
+        <div class="checkbox-grid" id="apoyo-grid"></div>
+      </div>
+
       <div id="form-error" class="login-error hidden"></div>
       <div class="form-actions">
         <button class="btn-secondary" id="btn-cancel">Cancelar</button>
@@ -200,6 +254,8 @@ export async function renderNuevo(container, navigate, params = {}) {
         oracion: container.querySelector('#f-oracion').value,
         temperamentos: selectedTemps,
         nivel_idx: nivelIdx,
+        cursos_completados: selectedCursos,
+        apoyo_completados: selectedApoyo,
       };
       try {
         let saved;
@@ -214,4 +270,6 @@ export async function renderNuevo(container, navigate, params = {}) {
   }
 
   renderForm();
+  renderCursos();
+  renderApoyo();
 }
