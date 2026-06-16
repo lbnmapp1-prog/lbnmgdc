@@ -76,6 +76,14 @@ export async function getMiembro(id) {
   return normMiembro(rec, gMap);
 }
 
+function parseDate(val) {
+  if (!val) return null;
+  // Convierte DD/MM/AAAA → YYYY-MM-DD
+  const ddmm = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (ddmm) return `${ddmm[3]}-${ddmm[2].padStart(2,'0')}-${ddmm[1].padStart(2,'0')}`;
+  return val; // ya en formato ISO
+}
+
 function toAirtableFields(fields) {
   return {
     Nombre: fields.nombre || '',
@@ -83,7 +91,7 @@ function toAirtableFields(fields) {
     GrupoId: fields.grupo_id || '',
     Telefono: fields.telefono || '',
     Correo: fields.correo || '',
-    FechaNacimiento: fields.fecha_nacimiento || null,
+    FechaNacimiento: parseDate(fields.fecha_nacimiento),
     EstadoCivil: fields.estado_civil || 'Soltero',
     Profesion: fields.profesion || '',
     TiempoIglesia: fields.tiempo_iglesia || '',
