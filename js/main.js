@@ -81,6 +81,8 @@ document.getElementById('btn-login')?.addEventListener('click', async () => {
   btn.disabled = true;
   try {
     await login(email, password);
+    const profile = await getProfile();
+    await showApp(profile);
   } catch (e) {
     errEl.textContent = 'Correo o contraseña incorrectos.';
     errEl.classList.remove('hidden');
