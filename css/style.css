@@ -277,36 +277,127 @@ input::placeholder { color: #9aa5b5; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .app-layout { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; padding: 10px; border-right: none; border-bottom: 1px solid #e8ecf3; position: sticky; top: 0; z-index: 100; }
+
+  /* LOGIN — solo muestra el formulario */
+  .view-login { display: block; background: #0d2440; padding: 0; min-height: 100vh; }
+  .login-left { display: none; }
+  .login-right { width: 100%; min-height: 100vh; padding: 40px 24px 32px; border-radius: 0; display: flex; flex-direction: column; justify-content: center; }
+  .login-form-header h2 { font-size: 22px; }
+  .btn-full { font-size: 15px; padding: 14px; }
+
+  /* APP SHELL — sidebar se convierte en barra inferior */
+  .app-shell { flex-direction: column; height: 100dvh; }
+
+  .sidebar {
+    order: 3;
+    width: 100%;
+    height: 62px;
+    flex-shrink: 0;
+    flex-direction: row;
+    background: #0d2440;
+    border-top: 1px solid rgba(255,255,255,.1);
+    padding: 0;
+  }
   .sidebar-logo { display: none; }
-  .sidebar nav { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px; flex: 1; }
+  .sidebar-nav {
+    flex-direction: row;
+    padding: 0;
+    gap: 0;
+    justify-content: space-around;
+    align-items: stretch;
+    width: 100%;
+    overflow: visible;
+  }
   .nav-section-label { display: none; }
-  .nav-item { padding: 8px 10px; font-size: 12px; border-radius: 8px; }
-  .nav-item svg { width: 16px; height: 16px; }
+  .nav-item {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border-radius: 0;
+    font-size: 9.5px;
+    color: #6b87b0;
+    font-weight: 600;
+    letter-spacing: .2px;
+  }
+  .nav-item svg { width: 20px; height: 20px; }
+  .nav-item.active { color: #fff; background: rgba(255,255,255,.1); }
   .sidebar-user { display: none; }
-  .topbar { padding: 10px 14px; }
+
+  /* TOPBAR */
+  .main-area { order: 1; min-width: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 54px; padding: 0 16px; flex-shrink: 0; }
   .topbar-left { display: none; }
-  .main-content { padding: 12px; }
-  .page-wrap { padding: 0; }
+  .search-box { width: 160px; }
+  .topbar-user > div { display: none; }
+  .topbar-right { gap: 10px; }
+
+  /* MAIN CONTENT */
+  .main-content { padding: 14px; overflow-y: auto; flex: 1; padding-bottom: 10px; }
+  .page-wrap { max-width: 100%; }
+  .page-wrap.narrow { max-width: 100%; }
+
+  /* CARDS & GRIDS */
+  .card { padding: 16px; border-radius: 12px; }
+  .grid-2 { grid-template-columns: 1fr !important; }
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .grid-2 { grid-template-columns: 1fr; }
-  .form-row { grid-template-columns: 1fr; }
-  .form-row .span2 { grid-column: span 1; }
-  .narrow { max-width: 100%; }
-  .view-login { padding: 16px; }
-  .login-card { padding: 24px 18px; }
-  [style*="grid-template-columns:1.55fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:2fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:1fr 1fr;"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr 1fr !important; }
-  [style*="grid-template-columns:1fr 1fr auto"] { grid-template-columns: 1fr !important; }
-  .org-level { flex-direction: column; align-items: center; }
-  .report-tabs { flex-wrap: wrap; }
-  .cal-grid { font-size: 11px; }
-  .miembros-table { font-size: 12px; }
-  .miembros-table th, .miembros-table td { padding: 8px 6px; }
+  .kpi-card { padding: 14px; }
+  .kpi-num { font-size: 24px; }
+  .kpi-icon { width: 34px; height: 34px; margin-bottom: 10px; }
+
+  /* inline style grids */
+  [style*="grid-template-columns:1.55fr"],
+  [style*="grid-template-columns: 1.55fr"] { grid-template-columns: 1fr !important; }
+  [style*="display:grid"][style*="1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* TABLAS */
+  .table-head { display: none; }
+  .table-head.members-grid, .table-row.members-grid { grid-template-columns: 1fr auto; gap: 8px; }
+  .table-row { padding: 12px 14px; }
+  .table-row > *:nth-child(3),
+  .table-row > *:nth-child(4) { display: none; }
+
+  /* FICHA */
+  .ficha-header { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .ficha-actions { width: 100%; }
+  .ficha-actions button { flex: 1; justify-content: center; }
   .ficha-grid { grid-template-columns: 1fr !important; }
+  .data-grid { grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+  .milestone-grid { grid-template-columns: repeat(3,1fr); }
+
+  /* FORMULARIO */
+  .form-section { padding: 16px; border-radius: 12px; }
+  .form-row { grid-template-columns: 1fr; }
+  .form-row .span2, .form-group.span2 { grid-column: span 1; }
+  [style*="grid-template-columns:1fr 1fr;gap:18px"] { grid-template-columns: 1fr !important; }
+  .checkbox-grid { grid-template-columns: 1fr 1fr; }
+  .form-actions { flex-direction: column-reverse; }
+  .form-actions button { width: 100%; justify-content: center; }
+
+  /* ORGANIGRAMA */
+  .org-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* CALENDARIO */
+  .cal-grid-layout { grid-template-columns: 1fr; }
+  .cal-cell { min-height: 52px; padding: 4px; }
+  .cal-ev-chip { font-size: 8px; padding: 1px 3px; }
+  .cal-dow span { padding: 6px 2px; font-size: 10px; }
+
+  /* REPORTES */
+  .report-tabs { gap: 6px; }
+  .report-tab { padding: 8px 10px; font-size: 12px; }
+  .report-stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .report-stat-num { font-size: 22px; }
+
+  /* ADMIN */
+  [style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  [style*="grid-template-columns:1fr 1fr auto"] { grid-template-columns: 1fr !important; }
+
+  /* MISC */
+  .back-link { font-size: 12px; }
   code { word-break: break-all; }
+  .empty-state { padding: 40px 16px; }
 }
 .empty-state { text-align: center; padding: 60px 20px; color: #8a94a8; font-size: 14px; }
