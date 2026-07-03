@@ -5,6 +5,18 @@ function normGrupo(rec) {
   return { id: rec.id, nombre: rec.fields.Nombre || '', sede: rec.fields.Sede || '', _raw: rec };
 }
 
+function calcEdad(fechaNacimiento) {
+  if (!fechaNacimiento) return null;
+  const nac = new Date(fechaNacimiento);
+  if (Number.isNaN(nac.getTime())) return null;
+  const hoy = new Date();
+  let edad = hoy.getUTCFullYear() - nac.getUTCFullYear();
+  const noHaLlegado = (hoy.getUTCMonth() < nac.getUTCMonth()) ||
+    (hoy.getUTCMonth() === nac.getUTCMonth() && hoy.getUTCDate() < nac.getUTCDate());
+  if (noHaLlegado) edad--;
+  return edad;
+}
+
 function normMiembro(rec, gruposMap = {}) {
   const f = rec.fields;
   const gId = f.GrupoId || '';
@@ -17,13 +29,19 @@ function normMiembro(rec, gruposMap = {}) {
     telefono: f.Telefono || '',
     correo: f.Correo || '',
     fecha_nacimiento: f.FechaNacimiento || null,
+    edad: calcEdad(f.FechaNacimiento),
     estado_civil: f.EstadoCivil || 'Soltero',
+    nro_hijos: f.NroHijos ?? 0,
+    edades_hijos: f.EdadesHijos || '',
+    aniversario: f.Aniversario || '',
     profesion: f.Profesion || '',
+    ocupacion: f.Ocupacion || '',
     tiempo_iglesia: f.TiempoIglesia || '',
     direccion: f.Direccion || '',
     bautizado: f.Bautizado || false,
     padre_esp: f.PadreEsp || '',
     disc_inicio: f.DiscInicio || '',
+    disc_fin: f.DiscFin || '',
     dones: f.Dones || '',
     habilidades: f.Habilidades || '',
     temperamentos: f.Temperamentos || [],
@@ -41,7 +59,7 @@ function normEvento(rec) {
   return { id: rec.id, titulo: f.Titulo || '', fecha: f.Fecha || '', hora: f.Hora || '', lugar: f.Lugar || '', tipo: f.Tipo || 'reunion' };
 }
 
-// ---- cache de grupos (evita refetch en cada llamada) ----
+// ---- cache de grupos (evita refetch en cada llamada, útil con ~50 miembros y límite de tasa de Airtable) ----
 let _gruposCache = null;
 async function gruposMap() {
   if (!_gruposCache) {
@@ -107,12 +125,17 @@ function toAirtableFields(fields) {
     Correo: fields.correo || '',
     FechaNacimiento: parseDate(fields.fecha_nacimiento),
     EstadoCivil: fields.estado_civil || 'Soltero',
+    NroHijos: fields.nro_hijos ?? 0,
+    EdadesHijos: fields.edades_hijos || '',
+    Aniversario: fields.aniversario || '',
     Profesion: fields.profesion || '',
+    Ocupacion: fields.ocupacion || '',
     TiempoIglesia: fields.tiempo_iglesia || '',
     Direccion: fields.direccion || '',
     Bautizado: !!fields.bautizado,
     PadreEsp: fields.padre_esp || '',
     DiscInicio: fields.disc_inicio || '',
+    DiscFin: fields.disc_fin || '',
     Dones: fields.dones || '',
     Habilidades: fields.habilidades || '',
     Temperamentos: fields.temperamentos || [],
@@ -126,7 +149,6 @@ function toAirtableFields(fields) {
 }
 
 export async function createMiembro(fields) {
-  // Enrich Grupo text field from cache
   const gMap = await gruposMap();
   const atFields = toAirtableFields(fields);
   const g = gMap[fields.grupo_id];
@@ -171,20 +193,35 @@ export async function createEvento(fields) {
   return normEvento(res.records[0]);
 }
 
+export async function updateEvento(id, fields) {
+  const res = await atPatch('eventos', id, {
+    Titulo: fields.titulo || '',
+    Fecha: fields.fecha || '',
+    Hora: fields.hora || '',
+    Lugar: fields.lugar || '',
+    Tipo: fields.tipo || 'reunion',
+  });
+  return normEvento(res);
+}
+
 export async function deleteEvento(id) {
   await atDelete('eventos', id);
 }
 
 // ===== STATS =====
-export async function getStats() {
-  const [miembros, grupos] = await Promise.all([atFetchAll('miembros'), atFetchAll('grupos')]);
+// grupoId opcional: si se pasa, las estadísticas quedan limitadas a ese grupo
+// (así un Líder de Grupo nunca ve totales que delaten el tamaño de otros grupos).
+export async function getStats(grupoId = null) {
+  const [miembrosRecs, grupos] = await Promise.all([atFetchAll('miembros'), atFetchAll('grupos')]);
+  const miembros = grupoId ? miembrosRecs.filter(r => r.fields.GrupoId === grupoId) : miembrosRecs;
   const total = miembros.length;
   const bautizados = miembros.filter(r => r.fields.Bautizado).length;
-  return { total, grupos: grupos.length, bautizados };
+  return { total, grupos: grupoId ? 1 : grupos.length, bautizados };
 }
 
-export async function getMiembrosPorGrupo() {
-  const [miembros, gMap] = await Promise.all([atFetchAll('miembros'), gruposMap()]);
+export async function getMiembrosPorGrupo(grupoId = null) {
+  const [miembrosRecs, gMap] = await Promise.all([atFetchAll('miembros'), gruposMap()]);
+  const miembros = grupoId ? miembrosRecs.filter(r => r.fields.GrupoId === grupoId) : miembrosRecs;
   const map = {};
   miembros.forEach(r => {
     const gId = r.fields.GrupoId || '';
@@ -194,12 +231,14 @@ export async function getMiembrosPorGrupo() {
   return Object.values(map);
 }
 
-export async function getCumpleaniosMes(month) {
+export async function getCumpleaniosMes(month, grupoId = null) {
   const [recs, gMap] = await Promise.all([atFetchAll('miembros'), gruposMap()]);
-  return recs
+  let list = recs
     .map(r => normMiembro(r, gMap))
     .filter(m => {
       if (!m.fecha_nacimiento) return false;
       return new Date(m.fecha_nacimiento).getUTCMonth() === month;
     });
+  if (grupoId) list = list.filter(m => m.grupo_id === grupoId);
+  return list.sort((a, b) => new Date(a.fecha_nacimiento).getUTCDate() - new Date(b.fecha_nacimiento).getUTCDate());
 }

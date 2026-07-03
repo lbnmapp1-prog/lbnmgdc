@@ -22,8 +22,9 @@ const PAGE_META = {
 let currentProfile = null;
 
 export function getCurrentProfile() { return currentProfile; }
-export function isAdmin() { const r = currentProfile?.rol; return r === 'Pastor de Área' || r === 'Líder Asesor'; }
+export function isAdmin() { const r = currentProfile?.rol; return r === 'Pastor de Área' || r === 'Líder Asesor' || r === 'Super Usuario'; }
 export function isLider() { return currentProfile?.rol === 'Líder de Grupo'; }
+export function canManageClaves() { const r = currentProfile?.rol; return r === 'Pastor de Área' || r === 'Super Usuario'; }
 export function getCurrentGrupoId() { return currentProfile?.grupoId || null; }
 
 // ===== NAVIGATION =====

@@ -1,4 +1,4 @@
-import { getEventos, createEvento, deleteEvento } from '../db.js';
+import { getEventos, createEvento, updateEvento, deleteEvento } from '../db.js';
 import { isAdmin } from '../main.js';
 
 const DAYS = ['L','M','X','J','V','S','D'];
@@ -8,6 +8,8 @@ const EV_COLORS = { reunion:'#1e5aa8', evento:'#9a3b52', servicio:'#2f7d6b', cap
 let calState = { y: new Date().getFullYear(), m: new Date().getMonth() };
 
 export async function renderCalendario(container, navigate) {
+  let editingEvId = null;
+
   async function render() {
     container.innerHTML = `<div class="spinner">Cargando...</div>`;
     const { y, m } = calState;
@@ -44,6 +46,15 @@ export async function renderCalendario(container, navigate) {
             <div class="ev-sub">${e.hora||''} ${e.lugar?'· '+e.lugar:''}</div>
           </div>
           <div class="cal-dot" style="background:${color};"></div>
+          ${isAdmin() ? `
+          <div class="flex gap-4" style="margin-left:8px;">
+            <button class="btn-icon btn-edit-ev" data-id="${e.id}" title="Editar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#56607a" stroke-width="1.9" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+            </button>
+            <button class="btn-icon btn-del-ev" data-id="${e.id}" title="Eliminar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a3b52" stroke-width="1.9" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+            </button>
+          </div>` : ''}
         </div>`;
     }).join('') || '<div class="text-muted text-sm">Sin eventos este mes</div>';
 
@@ -85,7 +96,7 @@ export async function renderCalendario(container, navigate) {
                   </select>
                   <div style="display:flex;gap:8px;">
                     <button class="btn-secondary" id="btn-cancel-ev" style="flex:1;justify-content:center;">Cancelar</button>
-                    <button class="btn-primary" id="btn-save-ev" style="flex:1;">Guardar</button>
+                    <button class="btn-primary" id="btn-save-ev" style="flex:1;">${editingEvId ? 'Actualizar' : 'Guardar'}</button>
                   </div>
                 </div>
               </div>
@@ -115,24 +126,57 @@ export async function renderCalendario(container, navigate) {
 
     const formEl = container.querySelector('#form-evento');
     container.querySelector('#btn-show-form')?.addEventListener('click', () => {
+      editingEvId = null;
+      container.querySelector('#ev-titulo').value = '';
+      container.querySelector('#ev-fecha').value = '';
+      container.querySelector('#ev-hora').value = '';
+      container.querySelector('#ev-lugar').value = '';
+      container.querySelector('#ev-tipo').value = 'reunion';
+      container.querySelector('#btn-save-ev').textContent = 'Guardar';
       formEl.style.display = formEl.style.display === 'none' ? '' : 'none';
     });
     container.querySelector('#btn-cancel-ev')?.addEventListener('click', () => {
+      editingEvId = null;
       formEl.style.display = 'none';
+    });
+    container.querySelectorAll('.btn-edit-ev').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ev = eventos.find(e => e.id === btn.dataset.id);
+        if (!ev) return;
+        editingEvId = ev.id;
+        container.querySelector('#ev-titulo').value = ev.titulo;
+        container.querySelector('#ev-fecha').value = ev.fecha;
+        container.querySelector('#ev-hora').value = ev.hora;
+        container.querySelector('#ev-lugar').value = ev.lugar;
+        container.querySelector('#ev-tipo').value = ev.tipo;
+        container.querySelector('#btn-save-ev').textContent = 'Actualizar';
+        formEl.style.display = '';
+        formEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    });
+    container.querySelectorAll('.btn-del-ev').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('¿Eliminar este evento?')) return;
+        await deleteEvento(btn.dataset.id);
+        render();
+      });
     });
     container.querySelector('#btn-save-ev')?.addEventListener('click', async () => {
       const titulo = container.querySelector('#ev-titulo').value.trim();
       const fecha  = container.querySelector('#ev-fecha').value;
       if (!titulo || !fecha) return;
       const btn = container.querySelector('#btn-save-ev');
-      btn.textContent = 'Guardando...'; btn.disabled = true;
-      await createEvento({
+      btn.textContent = editingEvId ? 'Actualizando...' : 'Guardando...'; btn.disabled = true;
+      const fields = {
         titulo,
         fecha,
         hora:  container.querySelector('#ev-hora').value,
         lugar: container.querySelector('#ev-lugar').value,
         tipo:  container.querySelector('#ev-tipo').value,
-      });
+      };
+      if (editingEvId) await updateEvento(editingEvId, fields);
+      else await createEvento(fields);
+      editingEvId = null;
       render();
     });
   }

@@ -1,16 +1,8 @@
 import { getGrupos, createMiembro, getMiembro, updateMiembro } from '../db.js';
 import { getCurrentProfile, isAdmin, getCurrentGrupoId } from '../main.js';
+import { MILESTONES, CURSOS, APOYO } from '../constants.js';
 
-const MILESTONES = [
-  { t:'Integración', s:'Alpha / MADE' }, { t:'Bautismo', s:'Bautizado en agua' },
-  { t:'Discipulado', s:'Discipulado completo' }, { t:'Retiro VEL', s:'Vida en el Espíritu' },
-  { t:'Perspectiva', s:'Perspectiva Bíblica' }, { t:'Fundamentos', s:'Fund. del Liderazgo' },
-  { t:'L. de Cuidado', s:'Capacitación GDC' }, { t:'Equipo Base', s:'Servicio activo' },
-  { t:'Líder de Grupo', s:'Multiplicación' },
-];
 const TEMPS = [{ c:'M', l:'Melancólico'}, { c:'F', l:'Flemático'}, { c:'C', l:'Colérico'}, { c:'S', l:'Sanguíneo'}];
-const CURSOS = ['Alpha / MADE','Discipulado','Bautizado','Retiro VEL','Padres','2 Discipulados','Retiro Creciendo E/C','Retiro DARTE','Persp. Bíblica','Líder de Cuidado','Fac. Grupos de A.','Líder de Niños','Líder Nueva Gen','Fund. Liderazgo','Pre-Matrimonial','Nuevo Testamento','Antiguo Testamento','Oratoria','Consej. Juvenil','Ayuda P/Padres Adolesc.','Consejería I','Consejería II','Mentoría de Nov.','Arconte','Esc. Plantación'];
-const APOYO = ['Cómo controlar la ira','Sanidad para el corazón herido','Superando el duelo','Celebremos la recuperación','Una vía de escape','Llenando el vacío paternal','Sanando el vínculo materno','Noviazgo con propósito','Pre-matrimonial: una elección','Pre-matrimonial: nuevo comienzo','Matrimonio sobre la roca','Principios p/la crianza','Padres para toda la vida','Ayuda p/padres adolescentes','Victoria financiera','Vida empresarial'];
 
 export async function renderNuevo(container, navigate, params = {}) {
   container.innerHTML = `<div class="spinner">Cargando...</div>`;
@@ -21,7 +13,13 @@ export async function renderNuevo(container, navigate, params = {}) {
   }
   const editId = params.editId || null;
   let existing = null;
-  if (editId) existing = await getMiembro(editId);
+  if (editId) {
+    existing = await getMiembro(editId);
+    if (!isAdmin() && existing.grupo_id !== getCurrentGrupoId()) {
+      container.innerHTML = `<div class="empty-state">No tienes acceso a este miembro — pertenece a otro Grupo de Cuidado.</div>`;
+      return;
+    }
+  }
 
   const f = existing || {};
   let selectedTemps = f.temperamentos || [];
@@ -151,7 +149,11 @@ export async function renderNuevo(container, navigate, params = {}) {
             </select>
           </div>
           <div class="form-group"><label>Profesión u oficio</label><input id="f-profesion" value="${f.profesion||''}" placeholder="Ej: Docente, Ingeniero..." /></div>
+          <div class="form-group"><label>Ocupación actual</label><input id="f-ocupacion" value="${f.ocupacion||''}" placeholder="Ej: Empleado, Independiente..." /></div>
           <div class="form-group"><label>Tiempo en la iglesia</label><input id="f-tiempo" value="${f.tiempo_iglesia||''}" placeholder="Ej: 2 años" /></div>
+          <div class="form-group"><label>N.º de hijos</label><input id="f-nro-hijos" type="number" min="0" value="${f.nro_hijos ?? 0}" /></div>
+          <div class="form-group"><label>Edades de los hijos</label><input id="f-edades-hijos" value="${f.edades_hijos||''}" placeholder="Ej: 5, 8 y 12 años" /></div>
+          <div class="form-group"><label>Aniversario de bodas</label><input id="f-aniversario" value="${f.aniversario||''}" placeholder="DD/MM/AAAA" /></div>
           <div class="form-group span2"><label>Dirección de habitación</label><input id="f-direccion" value="${f.direccion||''}" placeholder="Calle, sector, municipio..." /></div>
         </div>
       </div>
@@ -181,6 +183,7 @@ export async function renderNuevo(container, navigate, params = {}) {
             </div>
             <div class="form-group"><label>Padre / Madre espiritual</label><input id="f-padre-esp" value="${f.padre_esp||''}" placeholder="Nombre" /></div>
             <div class="form-group"><label>Inicio de discipulado</label><input id="f-disc-inicio" value="${f.disc_inicio||''}" placeholder="MM/AAAA" /></div>
+            <div class="form-group"><label>Culminación de discipulado</label><input id="f-disc-fin" value="${f.disc_fin||''}" placeholder="MM/AAAA (o vacío si está en curso)" /></div>
             <div class="form-group"><label>¿Bautizado?</label>
               <select id="f-bautizado">
                 <option value="false" ${!f.bautizado?'selected':''}>No</option>
@@ -256,13 +259,18 @@ export async function renderNuevo(container, navigate, params = {}) {
         fecha_nacimiento: container.querySelector('#f-fecha-nac').value || null,
         estado_civil: container.querySelector('#f-estado-civil').value,
         profesion: container.querySelector('#f-profesion').value,
+        ocupacion: container.querySelector('#f-ocupacion').value,
         tiempo_iglesia: container.querySelector('#f-tiempo').value,
+        nro_hijos: parseInt(container.querySelector('#f-nro-hijos').value, 10) || 0,
+        edades_hijos: container.querySelector('#f-edades-hijos').value,
+        aniversario: container.querySelector('#f-aniversario').value,
         direccion: container.querySelector('#f-direccion').value,
         rol: container.querySelector('#f-rol').value,
         grupo_id: container.querySelector('#f-grupo').value,
         sede: container.querySelector('#f-sede').value,
         padre_esp: container.querySelector('#f-padre-esp').value,
         disc_inicio: container.querySelector('#f-disc-inicio').value,
+        disc_fin: container.querySelector('#f-disc-fin').value,
         bautizado: container.querySelector('#f-bautizado').value === 'true',
         dones: container.querySelector('#f-dones').value,
         habilidades: container.querySelector('#f-habilidades').value,

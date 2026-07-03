@@ -21,7 +21,7 @@ export async function atPost(table, body) {
   const r = await fetch(`${BASE_URL}/${TABLES[table]}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${AT_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ typecast: true, ...body }),
   });
   if (!r.ok) throw new Error(`Airtable error ${r.status}: ${await r.text()}`);
   return r.json();
@@ -31,7 +31,7 @@ export async function atPatch(table, id, fields) {
   const r = await fetch(`${BASE_URL}/${TABLES[table]}/${id}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${AT_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({ fields, typecast: true }),
   });
   if (!r.ok) throw new Error(`Airtable error ${r.status}: ${await r.text()}`);
   return r.json();

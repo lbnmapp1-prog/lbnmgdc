@@ -1,15 +1,8 @@
 import { getMiembro, deleteMiembro } from '../db.js';
+import { isAdmin, getCurrentGrupoId } from '../main.js';
+import { MILESTONES, CURSOS, APOYO } from '../constants.js';
 
 const COLORS = ['#1e5aa8','#2f7d6b','#9a5b2b','#6b4e9a','#9a3b52','#2b6f8a','#3a6ea5','#7a7a3a'];
-const MILESTONES = [
-  { t:'Integración', s:'Alpha / MADE' }, { t:'Bautismo', s:'Bautizado en agua' },
-  { t:'Discipulado', s:'Discipulado completo' }, { t:'Retiro VEL', s:'Vida en el Espíritu' },
-  { t:'Perspectiva', s:'Perspectiva Bíblica' }, { t:'Fundamentos', s:'Fund. del Liderazgo' },
-  { t:'L. de Cuidado', s:'Capacitación GDC' }, { t:'Equipo Base', s:'Servicio activo' },
-  { t:'Líder de Grupo', s:'Multiplicación' },
-];
-const CURSOS = ['Alpha / MADE','Discipulado','Bautizado','Retiro VEL','Padres','2 Discipulados','Retiro Creciendo E/C','Retiro DARTE','Persp. Bíblica','Líder de Cuidado','Fac. Grupos de A.','Líder de Niños','Líder Nueva Gen','Fund. Liderazgo','Pre-Matrimonial','Nuevo Testamento','Antiguo Testamento','Oratoria','Consej. Juvenil','Ayuda P/Padres Adolesc.','Consejería I','Consejería II','Mentoría de Nov.','Arconte','Esc. Plantación'];
-const APOYO = ['Cómo controlar la ira','Sanidad para el corazón herido','Superando el duelo','Celebremos la recuperación','Una vía de escape','Llenando el vacío paternal','Sanando el vínculo materno','Noviazgo con propósito','Pre-matrimonial: una elección','Pre-matrimonial: nuevo comienzo','Matrimonio sobre la roca','Principios p/la crianza','Padres para toda la vida','Ayuda p/padres adolescentes','Victoria financiera','Vida empresarial'];
 
 function rolClass(rol) {
   if (rol === 'Líder de Grupo') return 'role-lider-grupo';
@@ -26,6 +19,10 @@ export async function renderFicha(container, navigate, params = {}) {
   container.innerHTML = `<div class="spinner">Cargando...</div>`;
   const m = await getMiembro(params.id);
   if (!m) { container.innerHTML = `<div class="empty-state">Miembro no encontrado</div>`; return; }
+  if (!isAdmin() && m.grupo_id !== getCurrentGrupoId()) {
+    container.innerHTML = `<div class="empty-state">No tienes acceso a este miembro — pertenece a otro Grupo de Cuidado.</div>`;
+    return;
+  }
 
   const color = COLORS[0];
   const nivelIdx = m.nivel_idx ?? 0;
@@ -128,8 +125,10 @@ export async function renderFicha(container, navigate, params = {}) {
             <div><div class="data-label">Fecha de nacimiento</div><div class="data-value">${m.fecha_nacimiento || '—'} · ${m.edad || '—'} años</div></div>
             <div><div class="data-label">Estado civil</div><div class="data-value">${m.estado_civil || '—'}</div></div>
             <div><div class="data-label">N.º de hijos</div><div class="data-value">${m.nro_hijos ?? 0}</div></div>
+            <div><div class="data-label">Edades de los hijos</div><div class="data-value">${m.edades_hijos || '—'}</div></div>
             <div><div class="data-label">Aniversario de bodas</div><div class="data-value">${m.aniversario || '—'}</div></div>
             <div><div class="data-label">Profesión</div><div class="data-value">${m.profesion || '—'}</div></div>
+            <div><div class="data-label">Ocupación</div><div class="data-value">${m.ocupacion || '—'}</div></div>
             <div><div class="data-label">Tiempo en la iglesia</div><div class="data-value">${m.tiempo_iglesia || '—'}</div></div>
             <div class="span2"><div class="data-label">Correo electrónico</div><div class="data-value mono">${m.correo || '—'}</div></div>
             <div class="span2"><div class="data-label">Dirección</div><div class="data-value">${m.direccion || '—'}</div></div>

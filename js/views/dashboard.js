@@ -1,19 +1,29 @@
 import { getStats, getMiembrosPorGrupo, getEventos, getCumpleaniosMes } from '../db.js';
+import { isAdmin, getCurrentGrupoId } from '../main.js';
 
 const AVATAR_COLORS = ['#1e5aa8','#2f7d6b','#9a5b2b','#6b4e9a','#9a3b52','#2b6f8a','#3a6ea5','#7a7a3a'];
 const EV_COLORS = { reunion:'#1e5aa8', evento:'#9a3b52', servicio:'#2f7d6b', capacitacion:'#9a5b2b', retiro:'#6b4e9a' };
+
+// Los cumpleaños mostrados ya están filtrados al mes actual, así que la edad
+// que cumplen este año es simplemente la diferencia de años de nacimiento.
+function edadQueCumple(fechaNacimiento, fechaRef) {
+  const nac = new Date(fechaNacimiento);
+  return fechaRef.getUTCFullYear() - nac.getUTCFullYear();
+}
 
 export async function renderDashboard(container, navigate) {
   container.innerHTML = `<div class="spinner">Cargando...</div>`;
 
   const now = new Date();
+  // Un Líder de Grupo solo ve estadísticas y cumpleaños de su propio grupo.
+  const grupoId = isAdmin() ? null : getCurrentGrupoId();
   let stats, porGrupo, eventos, cumple;
   try {
     [stats, porGrupo, eventos, cumple] = await Promise.all([
-      getStats(),
-      getMiembrosPorGrupo(),
+      getStats(grupoId),
+      getMiembrosPorGrupo(grupoId),
       getEventos(now.getFullYear(), now.getMonth()),
-      getCumpleaniosMes(now.getMonth()),
+      getCumpleaniosMes(now.getMonth(), grupoId),
     ]);
   } catch (e) {
     container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar datos:</b><br><code style="font-size:12px;">${e.message}</code></div>`;
@@ -49,17 +59,21 @@ export async function renderDashboard(container, navigate) {
     `;
   }).join('');
 
-  const cumpleCards = cumple.slice(0, 3).map((m, i) => {
+  const cumpleCards = cumple.map((m, i) => {
     const d = new Date(m.fecha_nacimiento);
+    const esHoy = d.getUTCDate() === now.getDate() && d.getUTCMonth() === now.getMonth();
+    const edadCumple = edadQueCumple(m.fecha_nacimiento, now);
     const ini = m.nombre.split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();
     return `
-      <div class="flex gap-12" style="align-items:center;">
+      <div class="flex gap-12" style="align-items:center;padding:8px 10px;border-radius:10px;${esHoy ? 'background:#fff6e9;border:1px solid #f3d9a8;' : ''}" onclick="window.navigate('ficha',{id:'${m.id}'})">
         <div class="avatar sm" style="background:${AVATAR_COLORS[i%AVATAR_COLORS.length]};">${ini}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13.5px;font-weight:600;color:#2d3650;">${m.nombre}</div>
-          <div style="font-size:12px;color:#8a94a8;">${m.grupos?.nombre || '—'}</div>
+          <div style="font-size:12px;color:#8a94a8;">${m.grupos?.nombre || '—'} · cumple ${edadCumple} años</div>
         </div>
-        <span style="font-size:12px;font-weight:600;color:#9a5b2b;background:#fbf2e9;padding:4px 10px;border-radius:20px;">${d.getUTCDate()} ${d.toLocaleString('es',{month:'short'})}</span>
+        ${esHoy
+          ? `<span style="font-size:12px;font-weight:700;color:#fff;background:#c9781f;padding:4px 10px;border-radius:20px;">¡Hoy! 🎉</span>`
+          : `<span style="font-size:12px;font-weight:600;color:#9a5b2b;background:#fbf2e9;padding:4px 10px;border-radius:20px;">${d.getUTCDate()} ${d.toLocaleString('es',{month:'short'})}</span>`}
       </div>
     `;
   }).join('') || '<div class="text-muted text-sm">Sin cumpleaños este mes</div>';
@@ -90,11 +104,11 @@ export async function renderDashboard(container, navigate) {
         <div class="kpi-label">Grupos de Cuidado</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon" style="background:#f5f0fa;color:#6b4e9a;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V5l-8-3Z"/></svg>
+        <div class="kpi-icon" style="background:#fbf2e9;color:#9a5b2b;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8a3 3 0 1 0-3-3c0 1 .5 1.8 1 2.5M12 8a3 3 0 1 1 3-3c0 1-.5 1.8-1 2.5M5 21V11a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10M3 21h18M3 13h18"/></svg>
         </div>
-        <div class="kpi-num">${porGrupo.length}</div>
-        <div class="kpi-label">Grupos activos</div>
+        <div class="kpi-num">${cumple.length}</div>
+        <div class="kpi-label">🎂 Cumpleaños este mes</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-icon" style="background:#eaf4fb;color:#2b6f8a;">
@@ -141,16 +155,19 @@ export async function renderDashboard(container, navigate) {
       </div>
 
       <div class="flex-col gap-18">
+        <div class="card" style="border:1.5px solid #f3d9a8;">
+          <div class="flex" style="justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title">🎂 Cumpleaños de ${now.toLocaleString('es',{month:'long'})}</div>
+            <span style="font-size:12px;font-weight:700;color:#9a5b2b;background:#fbf2e9;padding:3px 10px;border-radius:20px;">${cumple.length}</span>
+          </div>
+          <div class="flex-col gap-6" style="max-height:340px;overflow-y:auto;">${cumpleCards}</div>
+        </div>
         <div class="card">
           <div class="flex" style="justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div class="card-title">Próximos eventos</div>
             <button onclick="window.navigate('calendario')" class="back-link" style="margin:0;font-size:12.5px;color:#1e5aa8;font-weight:600;">Ver todo</button>
           </div>
           ${upcomingEvs || '<div class="text-muted text-sm">Sin eventos próximos</div>'}
-        </div>
-        <div class="card">
-          <div class="card-title" style="margin-bottom:16px;">Cumpleaños del mes</div>
-          <div class="flex-col gap-14">${cumpleCards}</div>
         </div>
       </div>
     </div>
