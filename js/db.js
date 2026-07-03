@@ -83,6 +83,12 @@ export async function createGrupo(nombre, sede) {
   return normGrupo(res.records[0]);
 }
 
+export async function updateGrupo(id, nombre, sede) {
+  invalidateGruposCache();
+  const res = await atPatch('grupos', id, { Nombre: nombre, Sede: sede });
+  return normGrupo(res);
+}
+
 export async function deleteGrupo(id) {
   invalidateGruposCache();
   await atDelete('grupos', id);

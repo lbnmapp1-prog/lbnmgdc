@@ -1,4 +1,4 @@
-import { getGrupos, createGrupo, deleteGrupo } from '../db.js';
+import { getGrupos, createGrupo, updateGrupo, deleteGrupo } from '../db.js';
 import { getUsuarios, createUsuario, deleteUsuario, updateUsuario } from '../auth.js';
 import { canManageClaves } from '../main.js';
 
@@ -11,6 +11,7 @@ export async function renderAdmin(container, navigate) {
   let grupos = await getGrupos();
   let usuarios = await getUsuarios();
   let editingUserId = null;
+  let editingGrupoId = null;
   const revealedPass = new Set();
   const puedeClaves = canManageClaves();
 
@@ -25,16 +26,38 @@ export async function renderAdmin(container, navigate) {
       <div class="card" style="margin-bottom:18px;">
         <div class="card-title" style="margin-bottom:16px;">Grupos de Cuidado</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
-          ${grupos.map(g => `
+          ${grupos.map(g => {
+            if (editingGrupoId === g.id) {
+              return `
+              <div class="grupo-edit-row" style="padding:12px 14px;background:#f5f7fb;border-radius:10px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                  <div class="form-group" style="margin:0;"><label>Nombre del grupo</label><input class="edit-g-nombre" value="${g.nombre}" /></div>
+                  <div class="form-group" style="margin:0;"><label>Sede</label>
+                    <select class="edit-g-sede">
+                      ${SEDES.map(s => `<option value="${s}" ${g.sede===s?'selected':''}>${s}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn-secondary btn-cancel-edit-grupo" style="flex:1;justify-content:center;">Cancelar</button>
+                  <button class="btn-primary btn-save-grupo" data-id="${g.id}" style="flex:1;">Guardar cambios</button>
+                </div>
+              </div>`;
+            }
+            return `
             <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f5f7fb;border-radius:10px;">
               <div style="flex:1;">
                 <div style="font-weight:600;color:#14223a;">${g.nombre}</div>
                 <div style="font-size:12px;color:#8a94a8;">${g.sede || '—'}</div>
               </div>
+              <button class="btn-icon btn-edit-grupo" data-id="${g.id}" title="Editar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#56607a" stroke-width="1.9" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+              </button>
               <button class="btn-icon btn-del-grupo" data-id="${g.id}" title="Eliminar">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9a3b52" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
               </button>
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
           <div class="form-group" style="margin:0;"><label>Nombre del grupo</label><input id="new-grupo-nombre" placeholder="GDC Nombre..." /></div>
@@ -126,6 +149,38 @@ export async function renderAdmin(container, navigate) {
         await deleteGrupo(btn.dataset.id);
         grupos = await getGrupos();
         render();
+      });
+    });
+
+    // Editar grupo
+    container.querySelectorAll('.btn-edit-grupo').forEach(btn => {
+      btn.addEventListener('click', () => {
+        editingGrupoId = btn.dataset.id;
+        render();
+      });
+    });
+    container.querySelectorAll('.btn-cancel-edit-grupo').forEach(btn => {
+      btn.addEventListener('click', () => {
+        editingGrupoId = null;
+        render();
+      });
+    });
+    container.querySelectorAll('.btn-save-grupo').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('.grupo-edit-row');
+        const nombre = row.querySelector('.edit-g-nombre').value.trim();
+        const sede = row.querySelector('.edit-g-sede').value;
+        if (!nombre) return;
+        btn.textContent = 'Guardando...'; btn.disabled = true;
+        try {
+          await updateGrupo(btn.dataset.id, nombre, sede);
+          editingGrupoId = null;
+          grupos = await getGrupos();
+          render();
+        } catch (e) {
+          alert('Error: ' + e.message);
+          btn.textContent = 'Guardar cambios'; btn.disabled = false;
+        }
       });
     });
 
