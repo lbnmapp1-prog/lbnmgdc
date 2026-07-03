@@ -1,4 +1,6 @@
 import { getMiembros, getGrupos } from '../db.js';
+import { isAdmin, getCurrentGrupoId } from '../main.js';
+import { imprimirResumenGeneral, imprimirDirectorioGrupo, imprimirRutaCrecimiento, imprimirCumpleanosMes } from '../reportesPrint.js';
 
 const COLORS = ['#1e5aa8','#2f7d6b','#9a5b2b','#6b4e9a','#9a3b52','#2b6f8a','#3a6ea5','#7a7a3a'];
 function ini(n) { return (n||'').split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase(); }
@@ -7,8 +9,11 @@ let activeGrupoId = null;
 
 export async function renderReportes(container, navigate, params = {}) {
   container.innerHTML = `<div class="spinner">Cargando...</div>`;
-  const [grupos, miembros] = await Promise.all([getGrupos(), getMiembros()]);
-  if (!activeGrupoId && grupos.length) activeGrupoId = params.grupoId || grupos[0].id;
+  const [todosGrupos, miembros] = await Promise.all([getGrupos(), getMiembros()]);
+  // Un Líder de Grupo solo ve el reporte de su propio grupo, nunca los de otros.
+  const grupos = isAdmin() ? todosGrupos : todosGrupos.filter(g => g.id === getCurrentGrupoId());
+  if (!isAdmin()) activeGrupoId = getCurrentGrupoId();
+  else if (!activeGrupoId && grupos.length) activeGrupoId = params.grupoId || grupos[0].id;
 
   function render() {
     const g = grupos.find(x => x.id === activeGrupoId) || grupos[0];
@@ -50,6 +55,15 @@ export async function renderReportes(container, navigate, params = {}) {
 
     container.innerHTML = `
     <div class="page-wrap fade-up">
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title" style="margin-bottom:14px;">Centro de Reportes</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+          <button class="btn-secondary btn-print" data-report="resumen" style="justify-content:center;">📄 Resumen general</button>
+          <button class="btn-secondary btn-print" data-report="directorio" style="justify-content:center;">📄 Directorio del grupo</button>
+          <button class="btn-secondary btn-print" data-report="ruta" style="justify-content:center;">📄 Ruta de crecimiento</button>
+          <button class="btn-secondary btn-print" data-report="cumple" style="justify-content:center;">📄 Cumpleaños del mes</button>
+        </div>
+      </div>
       <div class="report-tabs">${tabs}</div>
       <div class="report-stat-grid">
         <div class="report-stat"><div class="report-stat-label">Total integrantes</div><div class="report-stat-num" style="color:#14223a;">${gm.length}</div></div>
@@ -76,6 +90,17 @@ export async function renderReportes(container, navigate, params = {}) {
       tab.addEventListener('click', () => {
         activeGrupoId = tab.dataset.gid;
         render();
+      });
+    });
+
+    container.querySelectorAll('.btn-print').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switch (btn.dataset.report) {
+          case 'resumen':    imprimirResumenGeneral(); break;
+          case 'directorio': imprimirDirectorioGrupo(activeGrupoId); break;
+          case 'ruta':       imprimirRutaCrecimiento(); break;
+          case 'cumple':     imprimirCumpleanosMes(); break;
+        }
       });
     });
   }
