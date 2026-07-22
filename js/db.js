@@ -1,4 +1,5 @@
-import { atFetchAll, atPost, atPatch, atDelete } from './airtable.js';
+import { atFetchAll, atPost, atPatch, atDelete, atUploadAttachment } from './airtable.js';
+import { PILARES } from './constants.js';
 
 // ---- normalizadores ----
 function normGrupo(rec) {
@@ -247,4 +248,137 @@ export async function getCumpleaniosMes(month, grupoId = null) {
     });
   if (grupoId) list = list.filter(m => m.grupo_id === grupoId);
   return list.sort((a, b) => new Date(a.fecha_nacimiento).getUTCDate() - new Date(b.fecha_nacimiento).getUTCDate());
+}
+
+// ===== SEGUIMIENTOS (planificador de citas de discipulado) =====
+function normSeguimiento(rec) {
+  const f = rec.fields;
+  return {
+    id: rec.id,
+    miembro_id: f.MiembroId || '',
+    miembro_nombre: f.MiembroNombre || '',
+    grupo_id: f.GrupoId || '',
+    fecha: f.Fecha || '',
+    hora: f.Hora || '',
+    temas: f.Temas || '',
+    proximos_pasos: f.ProximosPasos || '',
+    versiculos: f.Versiculos || '',
+    estado: f.Estado || 'Programada',
+    notas: f.Notas || '',
+    lider_nombre: f.LiderNombre || '',
+  };
+}
+
+export async function getSeguimientos(grupoId = null) {
+  const recs = await atFetchAll('seguimientos');
+  let list = recs.map(normSeguimiento);
+  if (grupoId) list = list.filter(s => s.grupo_id === grupoId);
+  return list.sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
+}
+
+export async function createSeguimiento(fields) {
+  const res = await atPost('seguimientos', { records: [{ fields: {
+    MiembroId: fields.miembro_id || '',
+    MiembroNombre: fields.miembro_nombre || '',
+    GrupoId: fields.grupo_id || '',
+    Fecha: fields.fecha || '',
+    Hora: fields.hora || '',
+    Temas: fields.temas || '',
+    ProximosPasos: fields.proximos_pasos || '',
+    Versiculos: fields.versiculos || '',
+    Estado: fields.estado || 'Programada',
+    Notas: fields.notas || '',
+    LiderNombre: fields.lider_nombre || '',
+  }}]});
+  return normSeguimiento(res.records[0]);
+}
+
+export async function updateSeguimiento(id, fields) {
+  const patch = {};
+  if (fields.fecha !== undefined) patch.Fecha = fields.fecha;
+  if (fields.hora !== undefined) patch.Hora = fields.hora;
+  if (fields.temas !== undefined) patch.Temas = fields.temas;
+  if (fields.proximos_pasos !== undefined) patch.ProximosPasos = fields.proximos_pasos;
+  if (fields.versiculos !== undefined) patch.Versiculos = fields.versiculos;
+  if (fields.estado !== undefined) patch.Estado = fields.estado;
+  if (fields.notas !== undefined) patch.Notas = fields.notas;
+  const res = await atPatch('seguimientos', id, patch);
+  return normSeguimiento(res);
+}
+
+export async function deleteSeguimiento(id) {
+  await atDelete('seguimientos', id);
+}
+
+// ===== CLASES (Organizador de Temas: 5 pilares x 5 clases) =====
+function normClase(rec) {
+  const f = rec.fields;
+  const adj = (f.Archivo && f.Archivo[0]) ? { url: f.Archivo[0].url, filename: f.Archivo[0].filename, size: f.Archivo[0].size } : null;
+  return {
+    id: rec.id,
+    pilar: f.Pilar || '',
+    orden: f.Orden ?? 0,
+    titulo: f.Titulo || '',
+    fecha: f.Fecha || '',
+    hora: f.Hora || '',
+    descripcion: f.Descripcion || '',
+    archivo: adj,
+  };
+}
+
+export async function getClases() {
+  const recs = await atFetchAll('clases');
+  return recs.map(normClase).sort((a, b) =>
+    PILARES.findIndex(p => p.nombre === a.pilar) - PILARES.findIndex(p => p.nombre === b.pilar) || a.orden - b.orden
+  );
+}
+
+export async function getClasesDelMes(year, month) {
+  const clases = await getClases();
+  const m = String(month + 1).padStart(2, '0');
+  return clases.filter(c => c.fecha && c.fecha.startsWith(`${year}-${m}`));
+}
+
+export async function createClase(fields) {
+  const res = await atPost('clases', { records: [{ fields: {
+    Pilar: fields.pilar || '',
+    Orden: fields.orden ?? 0,
+    Titulo: fields.titulo || '',
+    Fecha: fields.fecha || '',
+    Hora: fields.hora || '',
+    Descripcion: fields.descripcion || '',
+  }}]});
+  return normClase(res.records[0]);
+}
+
+export async function updateClase(id, fields) {
+  const patch = {};
+  if (fields.titulo !== undefined) patch.Titulo = fields.titulo;
+  if (fields.fecha !== undefined) patch.Fecha = fields.fecha;
+  if (fields.hora !== undefined) patch.Hora = fields.hora;
+  if (fields.descripcion !== undefined) patch.Descripcion = fields.descripcion;
+  const res = await atPatch('clases', id, patch);
+  return normClase(res);
+}
+
+export async function deleteClase(id) {
+  await atDelete('clases', id);
+}
+
+const MAX_PDF_BYTES = 5 * 1024 * 1024; // límite práctico de subida directa (base64) de Airtable
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function subirArchivoClase(claseId, file) {
+  if (file.size > MAX_PDF_BYTES) throw new Error('El archivo es muy grande (máximo 5MB).');
+  const base64 = await fileToBase64(file);
+  const result = await atUploadAttachment(claseId, 'Archivo', base64, file.name, file.type || 'application/pdf');
+  return normClase({ id: claseId, fields: result.fields });
 }

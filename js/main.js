@@ -7,16 +7,20 @@ import { renderCalendario } from './views/calendario.js';
 import { renderReportes } from './views/reportes.js';
 import { renderNuevo } from './views/nuevo.js';
 import { renderAdmin } from './views/admin.js';
+import { renderSeguimiento } from './views/seguimiento.js';
+import { renderTemas } from './views/temas.js';
 
 const PAGE_META = {
-  dashboard:   ['Inicio', 'Resumen general del área de Jóvenes Adultos'],
-  miembros:    ['Miembros', 'Directorio de integrantes del área'],
-  ficha:       ['Ficha del miembro', 'Información completa del integrante'],
-  organigrama: ['Organigrama', 'Estructura de liderazgo del área'],
-  calendario:  ['Calendario', 'Reuniones y eventos del área'],
-  reportes:    ['Reportes', 'Información por Grupo de Cuidado'],
-  nuevo:       ['Nuevo registro', 'Ficha Miembro GDC · Anexo D'],
-  admin:       ['Administración', 'Usuarios y grupos del sistema'],
+  dashboard:    ['Inicio', 'Resumen general del área de Jóvenes Adultos'],
+  miembros:     ['Miembros', 'Directorio de integrantes del área'],
+  ficha:        ['Ficha del miembro', 'Información completa del integrante'],
+  organigrama:  ['Organigrama', 'Estructura de liderazgo del área'],
+  calendario:   ['Calendario', 'Reuniones y eventos del área'],
+  reportes:     ['Reportes', 'Información por Grupo de Cuidado'],
+  nuevo:        ['Nuevo registro', 'Ficha Miembro GDC · Anexo D'],
+  admin:        ['Administración', 'Usuarios y grupos del sistema'],
+  seguimiento:  ['Seguimiento', 'Planificador de citas y conversaciones de discipulado'],
+  temas:        ['Organizador de Temas', 'Pilares del área y clases programadas'],
 };
 
 let currentProfile = null;
@@ -47,6 +51,8 @@ async function navigate(page, params = {}) {
     case 'reportes':    await renderReportes(content, navigate, params); break;
     case 'nuevo':       await renderNuevo(content, navigate, params); break;
     case 'admin':       await renderAdmin(content, navigate); break;
+    case 'seguimiento': await renderSeguimiento(content, navigate); break;
+    case 'temas':       await renderTemas(content, navigate); break;
     default:            await renderDashboard(content, navigate);
   }
 }

@@ -1,9 +1,12 @@
-import { getEventos, createEvento, updateEvento, deleteEvento } from '../db.js';
+import { getEventos, createEvento, updateEvento, deleteEvento, getClasesDelMes } from '../db.js';
 import { isAdmin } from '../main.js';
 
 const DAYS = ['L','M','X','J','V','S','D'];
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const EV_COLORS = { reunion:'#1e5aa8', evento:'#9a3b52', servicio:'#2f7d6b', capacitacion:'#9a5b2b', retiro:'#6b4e9a' };
+const CLASE_COLOR = '#6b4e9a';
+
+const ICON_PDF = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>`;
 
 let calState = { y: new Date().getFullYear(), m: new Date().getMonth() };
 
@@ -14,10 +17,17 @@ export async function renderCalendario(container, navigate) {
     container.innerHTML = `<div class="spinner">Cargando...</div>`;
     const { y, m } = calState;
     const eventos = await getEventos(y, m);
+    // Si la tabla "clases" todavía no existe (Organizador de Temas recién
+    // configurado), el calendario de eventos sigue funcionando igual.
+    const clases = await getClasesDelMes(y, m).catch(() => []);
     const evMap = {};
     eventos.forEach(e => {
       const d = new Date(e.fecha).getUTCDate();
-      (evMap[d] = evMap[d] || []).push(e);
+      (evMap[d] = evMap[d] || []).push({ titulo: e.titulo, color: EV_COLORS[e.tipo] || '#8a94a8' });
+    });
+    clases.forEach(c => {
+      const d = new Date(c.fecha).getUTCDate();
+      (evMap[d] = evMap[d] || []).push({ titulo: `📘 ${c.titulo}`, color: CLASE_COLOR });
     });
 
     const first = new Date(y, m, 1);
@@ -29,34 +39,51 @@ export async function renderCalendario(container, navigate) {
     let cells = '';
     for (let i = 0; i < startDow; i++) cells += `<div class="cal-cell blank"></div>`;
     for (let d = 1; d <= days; d++) {
-      const evs = (evMap[d] || []).map(e => `<div class="cal-ev-chip" style="background:${EV_COLORS[e.tipo]||'#8a94a8'};">${e.titulo}</div>`).join('');
+      const evs = (evMap[d] || []).map(e => `<div class="cal-ev-chip" style="background:${e.color};">${e.titulo}</div>`).join('');
       cells += `<div class="cal-cell${isToday(d)?' today':''}"><div class="cal-num">${d}</div>${evs}</div>`;
     }
     const rem = (startDow + days) % 7;
     if (rem) for (let i = rem; i < 7; i++) cells += `<div class="cal-cell blank"></div>`;
 
-    const evList = eventos.map(e => {
-      const d = new Date(e.fecha);
-      const color = EV_COLORS[e.tipo] || '#8a94a8';
+    const itemsEventos = eventos.map(e => ({ ...e, esClase: false }));
+    const itemsClases = clases.map(c => ({ ...c, esClase: true }));
+    const todos = [...itemsEventos, ...itemsClases].sort((a, b) => `${a.fecha} ${a.hora || ''}`.localeCompare(`${b.fecha} ${b.hora || ''}`));
+
+    const evList = todos.map(item => {
+      const d = new Date(item.fecha);
+      if (item.esClase) {
+        return `
+          <div class="cal-ev-item">
+            <div class="cal-ev-day"><div class="day-num">${d.getUTCDate()}</div><div class="day-mon">${d.toLocaleString('es',{month:'short'})}</div></div>
+            <div class="cal-ev-info">
+              <div class="ev-title">${item.titulo}</div>
+              <div class="ev-sub">${item.hora || ''} · <span style="color:${CLASE_COLOR};font-weight:600;">Clase · ${item.pilar}</span></div>
+            </div>
+            <div class="cal-dot" style="background:${CLASE_COLOR};"></div>
+            ${item.archivo ? `
+            <a class="btn-icon" href="${item.archivo.url}" target="_blank" rel="noopener" title="Descargar PDF" style="margin-left:8px;color:${CLASE_COLOR};">${ICON_PDF}</a>` : ''}
+          </div>`;
+      }
+      const color = EV_COLORS[item.tipo] || '#8a94a8';
       return `
         <div class="cal-ev-item">
           <div class="cal-ev-day"><div class="day-num">${d.getUTCDate()}</div><div class="day-mon">${d.toLocaleString('es',{month:'short'})}</div></div>
           <div class="cal-ev-info">
-            <div class="ev-title">${e.titulo}</div>
-            <div class="ev-sub">${e.hora||''} ${e.lugar?'· '+e.lugar:''}</div>
+            <div class="ev-title">${item.titulo}</div>
+            <div class="ev-sub">${item.hora||''} ${item.lugar?'· '+item.lugar:''}</div>
           </div>
           <div class="cal-dot" style="background:${color};"></div>
           ${isAdmin() ? `
           <div class="flex gap-4" style="margin-left:8px;">
-            <button class="btn-icon btn-edit-ev" data-id="${e.id}" title="Editar">
+            <button class="btn-icon btn-edit-ev" data-id="${item.id}" title="Editar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#56607a" stroke-width="1.9" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
             </button>
-            <button class="btn-icon btn-del-ev" data-id="${e.id}" title="Eliminar">
+            <button class="btn-icon btn-del-ev" data-id="${item.id}" title="Eliminar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a3b52" stroke-width="1.9" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
             </button>
           </div>` : ''}
         </div>`;
-    }).join('') || '<div class="text-muted text-sm">Sin eventos este mes</div>';
+    }).join('') || '<div class="text-muted text-sm">Sin eventos ni clases este mes</div>';
 
     container.innerHTML = `
     <div class="page-wrap fade-up">
@@ -111,6 +138,7 @@ export async function renderCalendario(container, navigate) {
               <div class="legend-item"><div class="legend-dot" style="background:#2f7d6b;"></div>Servicio general</div>
               <div class="legend-item"><div class="legend-dot" style="background:#9a5b2b;"></div>Capacitación</div>
               <div class="legend-item"><div class="legend-dot" style="background:#6b4e9a;"></div>Retiro</div>
+              <div class="legend-item"><div class="legend-dot" style="background:${CLASE_COLOR};"></div>📘 Clase (Organizador de Temas)</div>
             </div>
           </div>
         </div>
