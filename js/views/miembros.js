@@ -28,7 +28,7 @@ export async function renderMiembros(container, navigate, params = {}) {
       const color = COLORS[i % COLORS.length];
       const pct = m.nivel_idx != null ? Math.round((m.nivel_idx + 1) / 9 * 100) : 0;
       return `
-        <div class="table-row members-grid" onclick="window.navigate('ficha',{id:'${m.id}'})">
+        <div class="table-row members-grid" data-miembro-id="${m.id}">
           <div class="flex gap-12" style="align-items:center;min-width:0;">
             <div class="avatar sm" style="background:${color};">${iniciales(m.nombre)}</div>
             <div style="min-width:0;">
@@ -64,7 +64,7 @@ export async function renderMiembros(container, navigate, params = {}) {
           </select>
           <span style="font-size:13px;color:#8a94a8;">${miembros.length} miembro${miembros.length!==1?'s':''}</span>
         </div>
-        <button onclick="window.navigate('nuevo')" class="btn-primary sm" style="display:flex;align-items:center;gap:7px;">
+        <button id="btn-nuevo-miembro" class="btn-primary sm" style="display:flex;align-items:center;gap:7px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           Nuevo miembro
         </button>
@@ -91,5 +91,9 @@ function bindEvents(container, navigate, grupos, params) {
   container.querySelector('#filter-grupo')?.addEventListener('change', async (e) => {
     params.grupoId = e.target.value || null;
     renderMiembros(container, navigate, params);
+  });
+  container.querySelector('#btn-nuevo-miembro')?.addEventListener('click', () => navigate('nuevo'));
+  container.querySelectorAll('[data-miembro-id]').forEach(row => {
+    row.addEventListener('click', () => navigate('ficha', { id: row.dataset.miembroId }));
   });
 }

@@ -32,7 +32,7 @@ export async function renderReportes(container, navigate, params = {}) {
       const pct = m.nivel_idx != null ? Math.round((m.nivel_idx+1)/9*100) : 0;
       const idx = miembros.indexOf(m);
       return `
-        <div class="rep-member ${cls}" onclick="window.navigate('ficha',{id:'${m.id}'})">
+        <div class="rep-member ${cls}" data-miembro-id="${m.id}">
           <div class="avatar md" style="background:${COLORS[idx%COLORS.length]};">${ini(m.nombre)}</div>
           <div style="flex:1;min-width:0;"><div class="rep-member-name">${m.nombre}</div><div class="rep-member-role" style="color:${roleColor};">${roleLabel}</div></div>
           <div style="text-align:right;flex-shrink:0;"><div style="font-size:12.5px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${roleColor};">${pct}%</div><div class="text-muted text-sm">ruta</div></div>
@@ -43,7 +43,7 @@ export async function renderReportes(container, navigate, params = {}) {
       const pct = m.nivel_idx != null ? Math.round((m.nivel_idx+1)/9*100) : 0;
       const idx = miembros.indexOf(m);
       return `
-        <div class="rep-member base" onclick="window.navigate('ficha',{id:'${m.id}'})">
+        <div class="rep-member base" data-miembro-id="${m.id}">
           <div class="avatar sm" style="background:${COLORS[idx%COLORS.length]};">${ini(m.nombre)}</div>
           <div style="flex:1;min-width:0;"><div class="rep-member-name">${m.nombre}</div><div class="text-muted text-sm">${m.grupos?.sede||'—'}</div></div>
           <div class="progress-wrap" style="flex-shrink:0;">
@@ -102,6 +102,10 @@ export async function renderReportes(container, navigate, params = {}) {
           case 'cumple':     imprimirCumpleanosMes(); break;
         }
       });
+    });
+
+    container.querySelectorAll('[data-miembro-id]').forEach(el => {
+      el.addEventListener('click', () => navigate('ficha', { id: el.dataset.miembroId }));
     });
   }
 

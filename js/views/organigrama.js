@@ -23,7 +23,7 @@ export async function renderOrganigrama(container, navigate) {
     const color = COLORS[gi % COLORS.length];
 
     const memberRow = (m, cls, roleLabel, roleColor) => `
-      <div class="org-member ${cls}" onclick="window.navigate('ficha',{id:'${m.id}'})">
+      <div class="org-member ${cls}" data-miembro-id="${m.id}">
         <div class="avatar sm" style="background:${COLORS[miembros.indexOf(m)%COLORS.length]};">${ini(m.nombre)}</div>
         <div style="min-width:0;">
           <div style="font-size:13px;font-weight:600;color:#14223a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.nombre}</div>
@@ -32,7 +32,7 @@ export async function renderOrganigrama(container, navigate) {
       </div>`;
 
     const memberSmRow = (m) => `
-      <div class="org-member-sm" onclick="window.navigate('ficha',{id:'${m.id}'})">
+      <div class="org-member-sm" data-miembro-id="${m.id}">
         <div class="avatar xs" style="background:${COLORS[miembros.indexOf(m)%COLORS.length]};">${ini(m.nombre)}</div>
         <div style="font-size:12.5px;color:#2d3650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.nombre}</div>
       </div>`;
@@ -73,4 +73,8 @@ export async function renderOrganigrama(container, navigate) {
     </div>
     <div class="org-grid">${groupCards}</div>
   </div>`;
+
+  container.querySelectorAll('[data-miembro-id]').forEach(el => {
+    el.addEventListener('click', () => navigate('ficha', { id: el.dataset.miembroId }));
+  });
 }

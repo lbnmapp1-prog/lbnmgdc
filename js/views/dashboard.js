@@ -32,7 +32,7 @@ export async function renderDashboard(container, navigate) {
 
   const maxCount = Math.max(1, ...porGrupo.map(g => g.count));
   const gruposBars = porGrupo.map((g, i) => `
-    <div class="flex gap-12" style="align-items:center;cursor:pointer;" onclick="window.navigate('reportes')">
+    <div class="flex gap-12 btn-ver-reportes" style="align-items:center;cursor:pointer;">
       <div style="width:148px;flex-shrink:0;font-size:13.5px;font-weight:600;color:#2d3650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${g.nombre}</div>
       <div style="flex:1;height:10px;background:#eef1f6;border-radius:6px;overflow:hidden;">
         <div style="height:100%;width:${Math.round(g.count/maxCount*100)}%;background:${AVATAR_COLORS[i%AVATAR_COLORS.length]};border-radius:6px;"></div>
@@ -65,7 +65,7 @@ export async function renderDashboard(container, navigate) {
     const edadCumple = edadQueCumple(m.fecha_nacimiento, now);
     const ini = m.nombre.split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();
     return `
-      <div class="flex gap-12" style="align-items:center;padding:8px 10px;border-radius:10px;${esHoy ? 'background:#fff6e9;border:1px solid #f3d9a8;' : ''}" onclick="window.navigate('ficha',{id:'${m.id}'})">
+      <div class="flex gap-12" data-miembro-id="${m.id}" style="align-items:center;padding:8px 10px;border-radius:10px;cursor:pointer;${esHoy ? 'background:#fff6e9;border:1px solid #f3d9a8;' : ''}">
         <div class="avatar sm" style="background:${AVATAR_COLORS[i%AVATAR_COLORS.length]};">${ini}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13.5px;font-weight:600;color:#2d3650;">${m.nombre}</div>
@@ -147,7 +147,7 @@ export async function renderDashboard(container, navigate) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c2cad8" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
             <span style="padding:7px 13px;border-radius:9px;background:#f3f5f9;color:#56607a;font-weight:600;">Equipo base · Miembros</span>
           </div>
-          <button onclick="window.navigate('organigrama')" class="back-link" style="margin-top:16px;margin-bottom:0;">
+          <button id="btn-ver-organigrama" class="back-link" style="margin-top:16px;margin-bottom:0;">
             Ver organigrama completo
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
           </button>
@@ -165,11 +165,18 @@ export async function renderDashboard(container, navigate) {
         <div class="card">
           <div class="flex" style="justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div class="card-title">Próximos eventos</div>
-            <button onclick="window.navigate('calendario')" class="back-link" style="margin:0;font-size:12.5px;color:#1e5aa8;font-weight:600;">Ver todo</button>
+            <button id="btn-ver-calendario" class="back-link" style="margin:0;font-size:12.5px;color:#1e5aa8;font-weight:600;">Ver todo</button>
           </div>
           ${upcomingEvs || '<div class="text-muted text-sm">Sin eventos próximos</div>'}
         </div>
       </div>
     </div>
   </div>`;
+
+  container.querySelector('.btn-ver-reportes')?.addEventListener('click', () => navigate('reportes'));
+  container.querySelector('#btn-ver-organigrama')?.addEventListener('click', () => navigate('organigrama'));
+  container.querySelector('#btn-ver-calendario')?.addEventListener('click', () => navigate('calendario'));
+  container.querySelectorAll('[data-miembro-id]').forEach(el => {
+    el.addEventListener('click', () => navigate('ficha', { id: el.dataset.miembroId }));
+  });
 }
