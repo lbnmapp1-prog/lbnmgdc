@@ -1,6 +1,7 @@
-import { getMiembro, deleteMiembro } from '../db.js';
-import { isAdmin, getCurrentGrupoId } from '../main.js';
-import { MILESTONES, CURSOS, APOYO } from '../constants.js';
+import { getMiembro, deleteMiembro, getEvaluaciones, createEvaluacion, deleteEvaluacion } from '../db.js';
+import { isAdmin, getCurrentGrupoId, getCurrentProfile } from '../main.js';
+import { MILESTONES, CURSOS, APOYO, AREAS_RUEDA } from '../constants.js';
+import { ruedaSvg, promedio, snapshot, progresoArea } from '../rueda.js';
 
 const COLORS = ['#1e5aa8','#2f7d6b','#9a5b2b','#6b4e9a','#9a3b52','#2b6f8a','#3a6ea5','#7a7a3a'];
 
@@ -117,6 +118,8 @@ export async function renderFicha(container, navigate, params = {}) {
       <div class="milestone-grid">${msHtml}</div>
     </div>
 
+    <div class="card lg mb-18" id="rueda-card"></div>
+
     <div class="ficha-grid">
       <div class="flex-col gap-18">
         <div class="card lg">
@@ -174,6 +177,8 @@ export async function renderFicha(container, navigate, params = {}) {
     </div>
   </div>`;
 
+  renderRueda(container.querySelector('#rueda-card'), m);
+
   container.querySelector('#btn-back')?.addEventListener('click', () => navigate('miembros'));
   container.querySelector('#btn-editar-miembro')?.addEventListener('click', () => navigate('nuevo', { editId: m.id }));
   container.querySelector('#btn-delete')?.addEventListener('click', async () => {
@@ -181,4 +186,154 @@ export async function renderFicha(container, navigate, params = {}) {
     await deleteMiembro(m.id);
     navigate('miembros');
   });
+}
+
+// ===== RUEDA DE VIDA =====
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function renderRueda(card, m) {
+  card.innerHTML = `<div class="spinner">Cargando rueda de vida...</div>`;
+  let evals = [];
+  let loadError = '';
+  try { evals = await getEvaluaciones(null, m.id); } catch (e) { loadError = e.message; }
+
+  let showForm = false;
+
+  function draw() {
+    const auto = evals.filter(e => e.estado === 'Aprobada' && e.fuente === 'Autoevaluación');
+    const actual = snapshot(evals, 0);
+    const previa = snapshot(evals, 1);
+    const autoActual = auto[0];
+    const pendientes = evals.filter(e => e.estado === 'Pendiente').length;
+
+    const series = [];
+    if (previa) series.push({ valores: previa.valores, color: '#9aa5b5', dashed: true });
+    if (autoActual) series.push({ valores: autoActual.valores, color: '#9a5b2b' });
+    if (actual) series.push({ valores: actual.valores, color: '#1e5aa8' });
+
+    const legend = [
+      actual && `<span><i style="background:#1e5aa8"></i>Líder · ${esc(actual.fecha)}</span>`,
+      autoActual && `<span><i style="background:#9a5b2b"></i>Autoevaluación · ${esc(autoActual.fecha)}</span>`,
+      previa && `<span><i style="background:#9aa5b5"></i>Evaluación anterior · ${esc(previa.fecha)}</span>`,
+    ].filter(Boolean).join('');
+
+    const cambios = actual && previa ? AREAS_RUEDA.map(a => {
+      if (actual.valores[a.key] == null || previa.valores[a.key] == null) return '';
+      const d = actual.valores[a.key] - previa.valores[a.key];
+      if (!d) return '';
+      return `<span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px;background:${d > 0 ? '#eef6f3' : '#fbeef1'};color:${d > 0 ? '#2f7d6b' : '#9a3b52'};">${a.label} ${d > 0 ? '+' : ''}${d}</span>`;
+    }).join('') : '';
+
+    const progreso = actual ? AREAS_RUEDA.map(a => {
+      const p = progresoArea(evals, a.key);
+      if (!p) return '';
+      const d = p.actual - p.inicio;
+      return `<div style="background:#f7f9fb;border:1px solid #eef1f6;border-radius:10px;padding:8px 12px;">
+        <div style="font-size:11.5px;color:#8a94a8;font-weight:600;">${a.label}</div>
+        <div style="font-size:14px;font-weight:700;color:#14223a;">${p.inicio} → ${p.actual} <span style="font-size:12px;color:${d > 0 ? '#2f7d6b' : d < 0 ? '#9a3b52' : '#8a94a8'};">${d > 0 ? '▲' : d < 0 ? '▼' : '='} ${d > 0 ? '+' : ''}${d}</span></div>
+        <div style="font-size:11px;color:#a9b2c2;">${p.n} registro(s)</div>
+      </div>`;
+    }).join('') : '';
+
+    const historial = evals.map(e => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #eef1f6;font-size:13px;flex-wrap:wrap;">
+        <span style="font-family:'IBM Plex Mono',monospace;color:#56607a;">${esc(e.fecha)}</span>
+        <span>${esc(e.fuente)}${AREAS_RUEDA.filter(a => e.valores[a.key] != null).length === 1 ? ` · ${esc(AREAS_RUEDA.find(a => e.valores[a.key] != null).label)}` : ''}</span>
+        <span style="font-size:11px;font-weight:700;color:#fff;background:${e.estado === 'Aprobada' ? '#2f7d6b' : e.estado === 'Pendiente' ? '#b9892b' : '#9a3b52'};padding:2px 8px;border-radius:20px;">${esc(e.estado)}</span>
+        <span style="color:#8a94a8;">Prom. ${promedio(e.valores) ?? '—'}</span>
+        ${e.comentario ? `<span style="color:#56607a;font-style:italic;flex-basis:100%;white-space:pre-wrap;">${esc(e.comentario)}</span>` : ''}
+        <button class="btn-icon btn-del-eval" data-id="${esc(e.id)}" title="Eliminar evaluación" style="margin-left:auto;color:#9a3b52;">✕</button>
+      </div>`).join('');
+
+    card.innerHTML = `
+      <div class="flex" style="align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-size:16px;font-weight:700;">Rueda de vida</div>
+          <div style="font-size:13px;color:#8a94a8;margin-top:2px;">Evaluación de 9 áreas del 1 al 10${pendientes ? ` · <b style="color:#b9892b;">${pendientes} pendiente(s) de aprobar en Seguimiento</b>` : ''}</div>
+        </div>
+        <div class="flex gap-8" style="flex-wrap:wrap;">
+          <button class="btn-secondary" id="btn-copy-link">Copiar enlace para el miembro</button>
+          ${showForm ? '' : '<button class="btn-primary sm" id="btn-nueva-eval">+ Nueva evaluación</button>'}
+        </div>
+      </div>
+      ${loadError ? `<div class="login-error" style="margin-bottom:12px;">No se pudo cargar: ${esc(loadError)}</div>` : ''}
+      ${showForm ? formHtml() : ''}
+      ${series.length ? `
+        <div style="display:flex;justify-content:center;">${ruedaSvg(series)}</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;font-size:12.5px;color:#56607a;margin-top:6px;">${legend}</div>
+        ${cambios ? `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px;">${cambios}</div>` : ''}
+        ${progreso ? `<div class="section-label" style="margin-top:20px;">Avance por área (primer registro → actual)</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">${progreso}</div>` : ''}`
+        : `<div class="empty-state">Aún no hay evaluaciones aprobadas. Crea una o envía el enlace al miembro.</div>`}
+      ${evals.length ? `<div style="margin-top:16px;">${historial}</div>` : ''}
+      <style>#rueda-card i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;}</style>`;
+
+    card.querySelector('#btn-nueva-eval')?.addEventListener('click', () => { showForm = true; draw(); });
+    card.querySelector('#btn-cancel-eval')?.addEventListener('click', () => { showForm = false; draw(); });
+    card.querySelectorAll('.btn-del-eval').forEach(b => b.addEventListener('click', async () => {
+      if (!confirm('¿Eliminar esta evaluación?')) return;
+      await deleteEvaluacion(b.dataset.id);
+      evals = evals.filter(e => e.id !== b.dataset.id);
+      draw();
+    }));
+    card.querySelector('#btn-copy-link')?.addEventListener('click', async (ev) => {
+      const link = `${location.origin}/evaluar.html?m=${m.id}`;
+      try { await navigator.clipboard.writeText(link); ev.target.textContent = '¡Enlace copiado!'; }
+      catch { prompt('Copia este enlace y envíaselo al miembro:', link); }
+    });
+    card.querySelectorAll('input[type=range]').forEach(inp => {
+      inp.addEventListener('input', () => { card.querySelector(`#rv-${inp.dataset.k}`).textContent = inp.value; });
+    });
+    card.querySelector('#btn-save-eval')?.addEventListener('click', async (ev) => {
+      const errEl = card.querySelector('#eval-error');
+      const valores = {};
+      card.querySelectorAll('input[type=range]').forEach(i => { valores[i.dataset.k] = Number(i.value); });
+      const fecha = card.querySelector('#eval-fecha').value;
+      if (!fecha) { errEl.textContent = 'La fecha es requerida.'; errEl.classList.remove('hidden'); return; }
+      ev.target.disabled = true; ev.target.textContent = 'Guardando...';
+      try {
+        const nueva = await createEvaluacion({
+          miembro_id: m.id, miembro_nombre: m.nombre, grupo_id: m.grupo_id,
+          fecha, fuente: 'Líder', estado: 'Aprobada', valores,
+          comentario: card.querySelector('#eval-comentario').value,
+          lider_nombre: getCurrentProfile()?.nombre || '',
+        });
+        evals = [nueva, ...evals].sort((a, b) => b.fecha.localeCompare(a.fecha));
+        showForm = false; draw();
+      } catch (e) {
+        errEl.textContent = e.message; errEl.classList.remove('hidden');
+        ev.target.disabled = false; ev.target.textContent = 'Guardar evaluación';
+      }
+    });
+  }
+
+  function formHtml() {
+    const base = snapshot(evals, 0);
+    const hoy = new Date().toISOString().slice(0, 10);
+    return `
+    <div class="form-section" style="margin-bottom:18px;">
+      <div class="section-label">Nueva evaluación (líder)</div>
+      <div class="form-row">
+        <div class="form-group"><label>Fecha *</label><input id="eval-fecha" type="date" value="${hoy}" /></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 22px;margin-top:8px;">
+        ${AREAS_RUEDA.map(a => {
+          const v = base?.valores[a.key] ?? 5;
+          return `<div>
+            <div class="flex" style="justify-content:space-between;font-size:13px;font-weight:600;color:#3d4860;"><span>${a.label}</span><span id="rv-${a.key}" style="color:#1e5aa8;">${v}</span></div>
+            <input type="range" min="1" max="10" step="1" value="${v}" data-k="${a.key}" style="width:100%;accent-color:#1e5aa8;" />
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="form-group" style="margin-top:12px;"><label>Comentario / observaciones</label><textarea id="eval-comentario" rows="2" placeholder="Qué se habló, qué área trabajar primero..."></textarea></div>
+      <div id="eval-error" class="login-error hidden" style="margin-top:10px;"></div>
+      <div class="form-actions" style="margin-top:14px;">
+        <button class="btn-secondary" id="btn-cancel-eval">Cancelar</button>
+        <button class="btn-primary" id="btn-save-eval">Guardar evaluación</button>
+      </div>
+    </div>`;
+  }
+
+  draw();
 }
