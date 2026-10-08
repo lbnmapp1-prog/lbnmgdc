@@ -5,6 +5,10 @@ import { ESTADOS_SEGUIMIENTO } from '../constants.js';
 const ESTADO_COLOR = { Programada: '#1e5aa8', Realizada: '#2f7d6b', Cancelada: '#9a3b52' };
 const FILTROS = ['Programada', 'Realizada', 'Cancelada', 'Todas'];
 
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function iniciales(n) { return (n || '').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase(); }
 
 const ICON_EDIT = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>`;
@@ -18,7 +22,7 @@ export async function renderSeguimiento(container, navigate) {
   try {
     [seguimientos, miembros] = await Promise.all([getSeguimientos(grupoId), getMiembros(grupoId)]);
   } catch (e) {
-    container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar Seguimiento:</b><br><code style="font-size:12px;">${e.message}</code><br><br>Si acabas de crear la tabla "seguimientos" en Airtable, revisa que el nombre y los campos coincidan exactamente.</div>`;
+    container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar Seguimiento:</b><br><code style="font-size:12px;">${esc(e.message)}</code><br><br>Si acabas de crear la tabla "seguimientos" en Airtable, revisa que el nombre y los campos coincidan exactamente.</div>`;
     return;
   }
   let editing = null; // null | 'new' | id
@@ -26,7 +30,7 @@ export async function renderSeguimiento(container, navigate) {
 
   function miembroOptions(sel) {
     if (!miembros.length) return '<option value="">— No hay miembros en tu grupo —</option>';
-    return miembros.map(m => `<option value="${m.id}" ${sel === m.id ? 'selected' : ''}>${m.nombre}</option>`).join('');
+    return miembros.map(m => `<option value="${esc(m.id)}" ${sel === m.id ? 'selected' : ''}>${esc(m.nombre)}</option>`).join('');
   }
 
   function formHtml(seg) {
@@ -36,15 +40,15 @@ export async function renderSeguimiento(container, navigate) {
       <div class="section-label">${f.id ? 'Editar cita de seguimiento' : 'Nueva cita de seguimiento'}</div>
       <div class="form-row">
         <div class="form-group span2"><label>Miembro *</label><select id="sg-miembro" ${f.id ? 'disabled' : ''}>${miembroOptions(f.miembro_id)}</select></div>
-        <div class="form-group"><label>Fecha *</label><input id="sg-fecha" type="date" value="${f.fecha || ''}" /></div>
-        <div class="form-group"><label>Hora</label><input id="sg-hora" placeholder="Ej: 5:00 PM" value="${f.hora || ''}" /></div>
+        <div class="form-group"><label>Fecha *</label><input id="sg-fecha" type="date" value="${esc(f.fecha)}" /></div>
+        <div class="form-group"><label>Hora</label><input id="sg-hora" placeholder="Ej: 5:00 PM" value="${esc(f.hora)}" /></div>
         <div class="form-group"><label>Estado</label>
           <select id="sg-estado">${ESTADOS_SEGUIMIENTO.map(e => `<option value="${e}" ${(f.estado || 'Programada') === e ? 'selected' : ''}>${e}</option>`).join('')}</select>
         </div>
-        <div class="form-group"><label>Versículo(s)</label><input id="sg-versiculos" placeholder="Ej: Filipenses 4:13" value="${f.versiculos || ''}" /></div>
-        <div class="form-group span2"><label>Temas a tratar</label><textarea id="sg-temas" rows="2" placeholder="¿De qué van a hablar en esta cita?">${f.temas || ''}</textarea></div>
-        <div class="form-group span2"><label>Próximos pasos</label><textarea id="sg-pasos" rows="2" placeholder="Compromisos o tareas para la próxima cita">${f.proximos_pasos || ''}</textarea></div>
-        <div class="form-group span2"><label>Notas</label><textarea id="sg-notas" rows="2" placeholder="Notas después de la conversación...">${f.notas || ''}</textarea></div>
+        <div class="form-group"><label>Versículo(s)</label><input id="sg-versiculos" placeholder="Ej: Filipenses 4:13" value="${esc(f.versiculos)}" /></div>
+        <div class="form-group span2"><label>Temas a tratar</label><textarea id="sg-temas" rows="2" placeholder="¿De qué van a hablar en esta cita?">${esc(f.temas)}</textarea></div>
+        <div class="form-group span2"><label>Próximos pasos</label><textarea id="sg-pasos" rows="2" placeholder="Compromisos o tareas para la próxima cita">${esc(f.proximos_pasos)}</textarea></div>
+        <div class="form-group span2"><label>Notas</label><textarea id="sg-notas" rows="2" placeholder="Notas después de la conversación...">${esc(f.notas)}</textarea></div>
       </div>
       <div id="sg-error" class="login-error hidden" style="margin-top:10px;"></div>
       <div class="form-actions" style="margin-top:14px;">
@@ -71,20 +75,22 @@ export async function renderSeguimiento(container, navigate) {
           <div class="day-num">${d ? d.getDate() : '—'}</div>
           <div class="day-mon">${d ? d.toLocaleString('es', { month: 'short' }) : ''}</div>
         </div>
-        <div class="avatar sm" style="background:#1e5aa8;flex-shrink:0;">${iniciales(s.miembro_nombre)}</div>
+        <div class="avatar sm" style="background:#1e5aa8;flex-shrink:0;">${esc(iniciales(s.miembro_nombre))}</div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-weight:700;color:#14223a;">${s.miembro_nombre || '—'}</span>
-            <span style="font-size:10.5px;font-weight:700;color:#fff;background:${color};padding:2px 9px;border-radius:20px;">${s.estado}</span>
-            ${s.hora ? `<span style="font-size:12px;color:#8a94a8;">${s.hora}</span>` : ''}
+            <span style="font-weight:700;color:#14223a;">${esc(s.miembro_nombre) || '—'}</span>
+            <span style="font-size:10.5px;font-weight:700;color:#fff;background:${color};padding:2px 9px;border-radius:20px;">${esc(s.estado)}</span>
+            ${s.hora ? `<span style="font-size:12px;color:#8a94a8;">${esc(s.hora)}</span>` : ''}
           </div>
-          ${s.temas ? `<div style="font-size:13px;color:#3d4860;margin-top:5px;">${s.temas}</div>` : ''}
-          ${s.versiculos ? `<div style="font-size:12px;color:#6b4e9a;margin-top:4px;font-style:italic;">📖 ${s.versiculos}</div>` : ''}
+          ${s.temas ? `<div style="font-size:13px;color:#3d4860;margin-top:5px;white-space:pre-wrap;">${esc(s.temas)}</div>` : ''}
+          ${s.versiculos ? `<div style="font-size:12px;color:#6b4e9a;margin-top:4px;font-style:italic;">📖 ${esc(s.versiculos)}</div>` : ''}
+          ${s.proximos_pasos ? `<div style="font-size:12.5px;color:#3d4860;margin-top:6px;white-space:pre-wrap;"><b style="color:#1e5aa8;">Próximos pasos:</b> ${esc(s.proximos_pasos)}</div>` : ''}
+          ${s.notas ? `<div style="font-size:12.5px;color:#56607a;margin-top:4px;white-space:pre-wrap;"><b style="color:#2f7d6b;">Notas:</b> ${esc(s.notas)}</div>` : ''}
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
-          ${s.estado === 'Programada' ? `<button class="btn-icon btn-check-sg" data-id="${s.id}" title="Marcar como realizada">${ICON_CHECK}</button>` : ''}
-          <button class="btn-icon btn-edit-sg" data-id="${s.id}" title="Editar" style="color:#56607a;">${ICON_EDIT}</button>
-          <button class="btn-icon btn-del-sg" data-id="${s.id}" title="Eliminar">${ICON_DEL}</button>
+          ${s.estado === 'Programada' ? `<button class="btn-icon btn-check-sg" data-id="${esc(s.id)}" title="Marcar como realizada">${ICON_CHECK}</button>` : ''}
+          <button class="btn-icon btn-edit-sg" data-id="${esc(s.id)}" title="Editar" style="color:#56607a;">${ICON_EDIT}</button>
+          <button class="btn-icon btn-del-sg" data-id="${esc(s.id)}" title="Eliminar">${ICON_DEL}</button>
         </div>
       </div>`;
     }).join('') || '<div class="empty-state">Sin citas de seguimiento en este filtro</div>';
