@@ -24,7 +24,7 @@ export async function renderSeguimiento(container, navigate) {
   try {
     [seguimientos, miembros] = await Promise.all([getSeguimientos(grupoId), getMiembros(grupoId)]);
   } catch (e) {
-    container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar Seguimiento:</b><br><code style="font-size:12px;">${esc(e.message)}</code><br><br>Si acabas de crear la tabla "seguimientos" en Airtable, revisa que el nombre y los campos coincidan exactamente.</div>`;
+    container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar Seguimiento:</b><br><code style="font-size:12px;">${esc(e.message)}</code><br><br>Si el problema continúa, avisa al administrador del sistema.</div>`;
     return;
   }
   let pendientes = [];

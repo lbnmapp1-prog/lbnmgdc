@@ -12,7 +12,6 @@ export async function renderAdmin(container, navigate) {
   let usuarios = await getUsuarios();
   let editingUserId = null;
   let editingGrupoId = null;
-  const revealedPass = new Set();
   const puedeClaves = canManageClaves();
 
   function render() {
@@ -93,7 +92,7 @@ export async function renderAdmin(container, navigate) {
                   </div>
                 </div>
                 ${puedeClaves ? `
-                <div class="form-group" style="margin:0 0 10px;"><label>Nueva contraseña (dejar vacío para no cambiar)</label><input class="edit-u-pass" type="text" placeholder="••••••" /></div>
+                <div class="form-group" style="margin:0 0 10px;"><label>Nueva contraseña (dejar vacío para no cambiar)</label><input class="edit-u-pass" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" /></div>
                 ` : ''}
                 <div style="display:flex;gap:8px;">
                   <button class="btn-secondary btn-cancel-edit-usuario" style="flex:1;justify-content:center;">Cancelar</button>
@@ -106,11 +105,6 @@ export async function renderAdmin(container, navigate) {
               <div style="flex:1;min-width:0;">
                 <div style="font-weight:600;color:#14223a;">${u.nombre}</div>
                 <div style="font-size:12px;color:#8a94a8;">${u.email} · ${u.rol}${g ? ' · ' + g.nombre : ''}</div>
-                ${puedeClaves ? `
-                <div style="font-size:12px;color:#8a94a8;margin-top:4px;display:flex;align-items:center;gap:6px;">
-                  Clave: <span style="font-family:'IBM Plex Mono',monospace;">${revealedPass.has(u.id) ? (u.password || '—') : '••••••••'}</span>
-                  <button class="btn-toggle-pass" data-id="${u.id}" style="border:none;background:none;color:#1e5aa8;font-weight:600;font-size:11.5px;cursor:pointer;padding:0;">${revealedPass.has(u.id) ? 'Ocultar' : 'Ver'}</button>
-                </div>` : ''}
               </div>
               <button class="btn-icon btn-edit-usuario" data-id="${u.id}" title="Editar">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#56607a" stroke-width="1.9" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
@@ -205,15 +199,6 @@ export async function renderAdmin(container, navigate) {
         } catch (e) {
           alert('Error: ' + e.message);
         }
-      });
-    });
-
-    // Ver / ocultar clave
-    container.querySelectorAll('.btn-toggle-pass').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        if (revealedPass.has(id)) revealedPass.delete(id); else revealedPass.add(id);
-        render();
       });
     });
 

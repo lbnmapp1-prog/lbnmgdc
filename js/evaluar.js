@@ -1,4 +1,5 @@
-import { AREAS_RUEDA } from './constants.js';
+import { AREAS_RUEDA, AREA_COL } from './constants.js';
+import { supabase, CONFIGURADO } from './supabase.js';
 
 const HINTS = {
   Dios: 'Oración, lectura de la Biblia, intimidad con Dios.',
@@ -22,13 +23,14 @@ function esc(v) {
 function fail(msg) { app.innerHTML = `<div class="card ok"><h1>Enlace no válido</h1><p class="lead">${esc(msg)}</p></div>`; }
 
 async function init() {
-  if (!miembroId) return fail('Pídele a tu líder que te envíe el enlace de nuevo.');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(miembroId)) return fail('Pídele a tu líder que te envíe el enlace de nuevo.');
+  if (!CONFIGURADO) return fail('El sistema aún no está configurado.');
   let nombre;
   try {
-    const r = await fetch(`/api/evaluacion?m=${encodeURIComponent(miembroId)}`);
-    const d = await r.json();
-    if (!r.ok) return fail(d.error || 'Pídele a tu líder que te envíe el enlace de nuevo.');
-    nombre = d.nombre;
+    const { data, error } = await supabase.rpc('evaluacion_publica_info', { p_miembro: miembroId });
+    if (error) throw error;
+    if (!data) return fail('Pídele a tu líder que te envíe el enlace de nuevo.');
+    nombre = data;
   } catch { return fail('No se pudo cargar. Revisa tu conexión e intenta de nuevo.'); }
 
   const valores = {};
@@ -69,13 +71,11 @@ async function init() {
     }
     btn.disabled = true; btn.textContent = 'Enviando…';
     try {
-      const r = await fetch('/api/evaluacion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ m: miembroId, valores, comentario: document.getElementById('comentario').value }),
+      const porColumna = Object.fromEntries(AREAS_RUEDA.map(a => [AREA_COL[a.key], valores[a.key]]));
+      const { error } = await supabase.rpc('evaluacion_publica_enviar', {
+        p_miembro: miembroId, p_valores: porColumna, p_comentario: document.getElementById('comentario').value,
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Error al enviar.');
+      if (error) throw new Error(error.message);
       app.innerHTML = `<div class="card ok"><h1>¡Gracias! 🙏</h1><p class="lead">Tu evaluación fue enviada. Tu líder la revisará contigo en la próxima conversación.</p></div>`;
     } catch (e) {
       errEl.textContent = e.message;

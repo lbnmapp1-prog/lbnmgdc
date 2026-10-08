@@ -1,4 +1,5 @@
-import { login, logout, getSession, getProfile, onAuthChange } from './auth.js';
+import { login, logout, getSession, getProfile, onAuthChange, solicitarRecuperacion, cambiarPassword } from './auth.js';
+import { ENLACE_RECUPERACION } from './supabase.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderMiembros } from './views/miembros.js';
 import { renderFicha } from './views/ficha.js';
@@ -102,7 +103,7 @@ document.getElementById('btn-login')?.addEventListener('click', async () => {
     const profile = await getProfile();
     await showApp(profile);
   } catch (e) {
-    errEl.textContent = 'Correo o contraseña incorrectos.';
+    errEl.textContent = e.message.startsWith('Falta') ? e.message : 'Correo o contraseña incorrectos.';
     errEl.classList.remove('hidden');
     btn.textContent = 'Ingresar al sistema';
     btn.disabled = false;
@@ -141,13 +142,71 @@ onAuthChange(async (session) => {
   }
 });
 
+// ===== RECUPERAR CONTRASEÑA =====
+// "¿Olvidaste tu contraseña?" envía un correo; el enlace vuelve aquí (ENLACE_RECUPERACION)
+// y se muestra la pantalla para elegir una contraseña nueva.
+(function setupOlvido() {
+  const btnLogin = document.getElementById('btn-login');
+  if (!btnLogin) return;
+  const link = document.createElement('button');
+  link.type = 'button';
+  link.textContent = '¿Olvidaste tu contraseña?';
+  link.style.cssText = 'display:block;margin:12px auto 0;background:none;border:none;color:#1e5aa8;font-weight:600;font-size:13px;cursor:pointer;';
+  btnLogin.after(link);
+  link.addEventListener('click', async () => {
+    const errEl = document.getElementById('login-error');
+    const email = document.getElementById('login-email').value.trim();
+    errEl.classList.remove('hidden');
+    if (!email) { errEl.textContent = 'Escribe tu correo arriba y vuelve a pulsar.'; return; }
+    try {
+      await solicitarRecuperacion(email);
+      errEl.textContent = 'Si el correo está registrado, te enviamos un enlace para elegir una contraseña nueva.';
+    } catch (e) { errEl.textContent = e.message; }
+  });
+})();
+
+function mostrarCambioPassword() {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:#0d2440;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:28px;max-width:380px;width:100%;font-family:inherit;">
+      <h2 style="margin:0 0 6px;font-size:20px;">Elige tu contraseña</h2>
+      <p style="margin:0 0 16px;color:#6b7690;font-size:14px;">Mínimo 8 caracteres.</p>
+      <input id="np1" type="password" autocomplete="new-password" placeholder="Contraseña nueva" class="field-input" style="width:100%;margin-bottom:10px;" />
+      <input id="np2" type="password" autocomplete="new-password" placeholder="Repite la contraseña" class="field-input" style="width:100%;" />
+      <div id="np-error" class="login-error hidden" style="margin-top:10px;"></div>
+      <button id="np-save" class="btn-primary btn-full" style="margin-top:14px;">Guardar y entrar</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#np-save').addEventListener('click', async () => {
+    const errEl = ov.querySelector('#np-error');
+    const p1 = ov.querySelector('#np1').value, p2 = ov.querySelector('#np2').value;
+    errEl.classList.remove('hidden');
+    if (p1.length < 8) { errEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'; return; }
+    if (p1 !== p2) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
+    try {
+      await cambiarPassword(p1);
+      history.replaceState(null, '', location.pathname);
+      location.reload();
+    } catch (e) { errEl.textContent = e.message; }
+  });
+}
+
 // ===== INIT =====
 (async () => {
-  const session = await getSession();
-  if (session) {
-    const profile = await getProfile();
-    await showApp(profile);
-  } else {
+  if (ENLACE_RECUPERACION) { mostrarCambioPassword(); return; }
+  try {
+    const session = await getSession();
+    if (session) {
+      const profile = await getProfile();
+      await showApp(profile);
+    } else {
+      showLogin();
+    }
+  } catch (e) {
     showLogin();
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
   }
 })();

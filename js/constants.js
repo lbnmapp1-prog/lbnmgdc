@@ -22,7 +22,7 @@ export const CLASES_POR_PILAR = 5;
 
 export const ESTADOS_SEGUIMIENTO = ['Programada', 'Realizada', 'Cancelada'];
 
-// Rueda de vida: 9 áreas evaluadas del 1 al 10. `key` es el nombre del campo en Airtable.
+// Rueda de vida: 9 áreas evaluadas del 1 al 10. `key` identifica el área en la app (ver AREA_COL para la columna en la base).
 export const AREAS_RUEDA = [
   { key: 'Dios',       label: 'Relación con Dios' },
   { key: 'Familia',    label: 'Familia' },
@@ -91,4 +91,10 @@ export const PREGUNTAS_AREA = {
     '¿Cuánto tiempo dedicas a pantallas y redes sociales?',
     '¿Qué hobby o actividad sana te gustaría retomar?',
   ],
+};
+
+// Área de la rueda → columna en la tabla `evaluaciones` (Postgres usa snake_case).
+export const AREA_COL = {
+  Dios: 'dios', Familia: 'familia', Relaciones: 'relaciones', Amigos: 'amigos', Salud: 'salud',
+  Dinero: 'dinero', Profesion: 'profesion', VidaAdulta: 'vida_adulta', Ocio: 'ocio',
 };
