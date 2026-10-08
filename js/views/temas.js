@@ -18,7 +18,7 @@ export async function renderTemas(container, navigate) {
   try {
     clases = await getClases();
   } catch (e) {
-    container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar Organizador de Temas:</b><br><code style="font-size:12px;">${e.message}</code><br><br>Si acabas de crear la tabla "clases" en Airtable, revisa que el nombre y los campos coincidan exactamente.</div>`;
+    container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar Organizador de Temas:</b><br><code style="font-size:12px;">${e.message}</code><br><br>Si el problema continúa, avisa al administrador del sistema.</div>`;
     return;
   }
   let editingSlot = null; // { pilar, orden, clase } | null

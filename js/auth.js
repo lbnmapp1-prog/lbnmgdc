@@ -1,81 +1,103 @@
-import { atFetchAll, atPost, atPatch, atDelete } from './airtable.js';
+import { supabase, CONFIGURADO } from './supabase.js';
 
-const SESSION_KEY = 'pastoreo_session';
-
-function normUser(rec) {
-  const f = rec.fields;
-  return { id: rec.id, nombre: f.Nombre || '', email: f.Email || '', password: f.Password || '', rol: f.Rol || 'Líder de Grupo', grupoId: f.GrupoId || '' };
+function normPerfil(p) {
+  return { id: p.id, nombre: p.nombre || '', email: p.email || '', rol: p.rol || 'Líder de Grupo', grupoId: p.grupo_id || '' };
 }
 
 export async function login(email, password) {
-  const recs = await atFetchAll('usuarios');
-  const match = recs.find(r => (r.fields.Email || '').toLowerCase() === email.toLowerCase() && r.fields.Password === password);
-  if (!match) throw new Error('Correo o contraseña incorrectos');
-  const user = normUser(match);
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  return user;
+  if (!CONFIGURADO) throw new Error('Falta configurar Supabase en js/config.js');
+  const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+  if (error) throw new Error('Correo o contraseña incorrectos');
 }
 
 export async function logout() {
-  localStorage.removeItem(SESSION_KEY);
+  await supabase.auth.signOut();
   window.location.reload();
 }
 
 export async function getSession() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+  if (!CONFIGURADO) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session;
 }
 
+// Perfil del usuario con sesión iniciada (rol y grupo salen de la tabla `perfiles`, protegida por RLS).
 export async function getProfile() {
-  return getSession();
+  const session = await getSession();
+  if (!session) return null;
+  const { data, error } = await supabase.from('perfiles').select('*').eq('id', session.user.id).maybeSingle();
+  if (error || !data) {
+    await supabase.auth.signOut();
+    throw new Error('Tu usuario no tiene perfil en el sistema. Pide a un administrador que lo cree.');
+  }
+  return normPerfil(data);
 }
 
+// Solo avisa cuando la sesión se cierra (vencida o cerrada en otra pestaña).
+// El inicio de sesión lo maneja main.js directamente.
 export function onAuthChange(callback) {
-  return () => {};
+  const { data } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') callback(null);
+  });
+  return () => data.subscription.unsubscribe();
 }
 
-// ===== GESTIÓN DE USUARIOS (solo Pastor/Asesor/Super Usuario) =====
+export async function solicitarRecuperacion(email) {
+  if (!CONFIGURADO) throw new Error('Falta configurar Supabase en js/config.js');
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+  if (error) throw new Error(error.message);
+}
+
+export async function cambiarPassword(nueva) {
+  const { error } = await supabase.auth.updateUser({ password: nueva });
+  if (error) throw new Error(error.message);
+}
+
+// ===== GESTIÓN DE USUARIOS (solo Pastor / Asesor / Super Usuario) =====
+function normUser(u) {
+  return { id: u.id, nombre: u.nombre || '', email: u.email || '', rol: u.rol || 'Líder de Grupo', grupoId: u.grupo_id || '' };
+}
+
+// Cualquier usuario autenticado ve nombre/rol/grupo (para el organigrama); el correo
+// solo lo devuelve la base a los administradores (RLS sobre `perfiles`).
 export async function getUsuarios() {
-  const recs = await atFetchAll('usuarios');
-  return recs.map(normUser);
+  const [basico, conCorreo] = await Promise.all([
+    supabase.rpc('listar_usuarios_basico'),
+    supabase.from('perfiles').select('id,email'),
+  ]);
+  if (basico.error) throw new Error(basico.error.message);
+  const correos = Object.fromEntries((conCorreo.data || []).map(p => [p.id, p.email]));
+  return basico.data.map(u => normUser({ ...u, email: correos[u.id] || '' }));
+}
+
+// Crear, editar y borrar usuarios requiere la service_role key, que vive solo en el
+// servidor: se hace a través de /api/admin-users (api/admin-users.js).
+async function adminUsers(method, body) {
+  const session = await getSession();
+  if (!session) throw new Error('Sesión vencida. Vuelve a iniciar sesión.');
+  const r = await fetch('/api/admin-users', {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'No se pudo completar la operación.');
+  return data;
 }
 
 export async function createUsuario(fields) {
-  const recs = await atFetchAll('usuarios');
-  const email = (fields.email || '').trim().toLowerCase();
-  if (recs.some(r => (r.fields.Email || '').toLowerCase() === email)) {
-    throw new Error('Ya existe un usuario con ese correo.');
-  }
-  const res = await atPost('usuarios', { records: [{ fields: {
-    Nombre: fields.nombre || '',
-    Email: fields.email || '',
-    Password: fields.password || '',
-    Rol: fields.rol || 'Líder de Grupo',
-    GrupoId: fields.grupoId || '',
-  }}]});
-  return normUser(res.records[0]);
+  const { id } = await adminUsers('POST', {
+    nombre: fields.nombre, email: fields.email, password: fields.password, rol: fields.rol, grupoId: fields.grupoId || null,
+  });
+  return { id, nombre: fields.nombre, email: fields.email, rol: fields.rol, grupoId: fields.grupoId || '' };
 }
 
 export async function updateUsuario(id, fields) {
-  if (fields.email !== undefined) {
-    const recs = await atFetchAll('usuarios');
-    const email = (fields.email || '').trim().toLowerCase();
-    if (recs.some(r => r.id !== id && (r.fields.Email || '').toLowerCase() === email)) {
-      throw new Error('Ya existe otro usuario con ese correo.');
-    }
-  }
-  const patchFields = {};
-  if (fields.nombre !== undefined) patchFields.Nombre = fields.nombre;
-  if (fields.email !== undefined) patchFields.Email = fields.email;
-  if (fields.rol !== undefined) patchFields.Rol = fields.rol;
-  if (fields.grupoId !== undefined) patchFields.GrupoId = fields.grupoId;
-  if (fields.password) patchFields.Password = fields.password;
-  const res = await atPatch('usuarios', id, patchFields);
-  return normUser(res);
+  await adminUsers('PATCH', {
+    id, nombre: fields.nombre, email: fields.email, rol: fields.rol, grupoId: fields.grupoId, password: fields.password || undefined,
+  });
 }
 
 export async function deleteUsuario(id) {
-  await atDelete('usuarios', id);
+  await adminUsers('DELETE', { id });
 }

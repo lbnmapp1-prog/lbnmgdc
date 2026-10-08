@@ -1,9 +1,28 @@
-import { atFetchAll, atPost, atPatch, atDelete, atUploadAttachment } from './airtable.js';
-import { PILARES, AREAS_RUEDA } from './constants.js';
+import { supabase } from './supabase.js';
+import { PILARES, AREAS_RUEDA, AREA_COL } from './constants.js';
 
-// ---- normalizadores ----
-function normGrupo(rec) {
-  return { id: rec.id, nombre: rec.fields.Nombre || '', sede: rec.fields.Sede || '', _raw: rec };
+// ---- utilidades ----
+function check({ data, error }) {
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// PostgREST devuelve como máximo 1000 filas por consulta: se pagina para traer todo.
+async function selectAll(table, columns = '*', apply = q => q) {
+  const out = [];
+  const size = 1000;
+  for (let from = 0; ; from += size) {
+    const rows = check(await apply(supabase.from(table).select(columns)).order('id').range(from, from + size - 1));
+    out.push(...rows);
+    if (rows.length < size) return out;
+  }
+}
+
+const vacioANull = v => (v === '' || v === undefined ? null : v);
+
+// ---- normalizadores (misma forma que usan las pantallas) ----
+function normGrupo(r) {
+  return { id: r.id, nombre: r.nombre || '', sede: r.sede || '' };
 }
 
 function calcEdad(fechaNacimiento) {
@@ -18,55 +37,53 @@ function calcEdad(fechaNacimiento) {
   return edad;
 }
 
-function normMiembro(rec, gruposMap = {}) {
-  const f = rec.fields;
-  const gId = f.GrupoId || '';
+function normMiembro(r, gruposMap = {}) {
+  const gId = r.grupo_id || '';
   return {
-    id: rec.id,
-    nombre: f.Nombre || '',
-    rol: f.Rol || 'Miembro',
+    id: r.id,
+    nombre: r.nombre || '',
+    rol: r.rol || 'Miembro',
     grupo_id: gId,
     grupos: gruposMap[gId] || null,
-    telefono: f.Telefono || '',
-    correo: f.Correo || '',
-    fecha_nacimiento: f.FechaNacimiento || null,
-    edad: calcEdad(f.FechaNacimiento),
-    estado_civil: f.EstadoCivil || 'Soltero',
-    nro_hijos: f.NroHijos ?? 0,
-    edades_hijos: f.EdadesHijos || '',
-    aniversario: f.Aniversario || '',
-    profesion: f.Profesion || '',
-    ocupacion: f.Ocupacion || '',
-    tiempo_iglesia: f.TiempoIglesia || '',
-    direccion: f.Direccion || '',
-    bautizado: f.Bautizado || false,
-    padre_esp: f.PadreEsp || '',
-    disc_inicio: f.DiscInicio || '',
-    disc_fin: f.DiscFin || '',
-    dones: f.Dones || '',
-    habilidades: f.Habilidades || '',
-    temperamentos: f.Temperamentos || [],
-    mentor: f.Mentor || '',
-    oracion: f.Oracion || '',
-    nivel_idx: f.NivelIdx ?? 0,
-    cursos_completados: f.CursosCompletados || [],
-    apoyo_completados: f.ApoyoCompletados || [],
-    sede: f.Sede || '',
+    telefono: r.telefono || '',
+    correo: r.correo || '',
+    fecha_nacimiento: r.fecha_nacimiento || null,
+    edad: calcEdad(r.fecha_nacimiento),
+    estado_civil: r.estado_civil || 'Soltero',
+    nro_hijos: r.nro_hijos ?? 0,
+    edades_hijos: r.edades_hijos || '',
+    aniversario: r.aniversario || '',
+    profesion: r.profesion || '',
+    ocupacion: r.ocupacion || '',
+    tiempo_iglesia: r.tiempo_iglesia || '',
+    direccion: r.direccion || '',
+    bautizado: r.bautizado || false,
+    padre_esp: r.padre_esp || '',
+    disc_inicio: r.disc_inicio || '',
+    disc_fin: r.disc_fin || '',
+    dones: r.dones || '',
+    habilidades: r.habilidades || '',
+    temperamentos: r.temperamentos || [],
+    mentor: r.mentor || '',
+    oracion: r.oracion || '',
+    nivel_idx: r.nivel_idx ?? 0,
+    cursos_completados: r.cursos_completados || [],
+    apoyo_completados: r.apoyo_completados || [],
+    sede: r.sede || '',
   };
 }
 
-function normEvento(rec) {
-  const f = rec.fields;
-  return { id: rec.id, titulo: f.Titulo || '', fecha: f.Fecha || '', hora: f.Hora || '', lugar: f.Lugar || '', tipo: f.Tipo || 'reunion' };
+function normEvento(r) {
+  return { id: r.id, titulo: r.titulo || '', fecha: r.fecha || '', hora: r.hora || '', lugar: r.lugar || '', tipo: r.tipo || 'reunion' };
 }
 
-// ---- cache de grupos (evita refetch en cada llamada, útil con ~50 miembros y límite de tasa de Airtable) ----
+// ---- cache de grupos (se pide una vez por sesión) ----
 let _gruposCache = null;
 async function gruposMap() {
   if (!_gruposCache) {
-    const recs = await atFetchAll('grupos');
+    const rows = await selectAll('grupos');
     _gruposCache = {};
-    recs.forEach(r => { _gruposCache[r.id] = normGrupo(r); });
+    rows.forEach(r => { _gruposCache[r.id] = normGrupo(r); });
   }
   return _gruposCache;
 }
@@ -80,26 +97,26 @@ export async function getGrupos() {
 
 export async function createGrupo(nombre, sede) {
   invalidateGruposCache();
-  const res = await atPost('grupos', { records: [{ fields: { Nombre: nombre, Sede: sede } }] });
-  return normGrupo(res.records[0]);
+  return normGrupo(check(await supabase.from('grupos').insert({ nombre, sede }).select().single()));
 }
 
 export async function updateGrupo(id, nombre, sede) {
   invalidateGruposCache();
-  const res = await atPatch('grupos', id, { Nombre: nombre, Sede: sede });
-  return normGrupo(res);
+  return normGrupo(check(await supabase.from('grupos').update({ nombre, sede }).eq('id', id).select().single()));
 }
 
 export async function deleteGrupo(id) {
   invalidateGruposCache();
-  await atDelete('grupos', id);
+  check(await supabase.from('grupos').delete().eq('id', id));
 }
 
 // ===== MIEMBROS =====
 export async function getMiembros(grupoId = null, search = '') {
-  const [recs, gMap] = await Promise.all([atFetchAll('miembros'), gruposMap()]);
-  let list = recs.map(r => normMiembro(r, gMap));
-  if (grupoId) list = list.filter(m => m.grupo_id === grupoId);
+  const [rows, gMap] = await Promise.all([
+    selectAll('miembros', '*', q => (grupoId ? q.eq('grupo_id', grupoId) : q)),
+    gruposMap(),
+  ]);
+  let list = rows.map(r => normMiembro(r, gMap));
   if (search) {
     const q = search.toLowerCase();
     list = list.filter(m => m.nombre.toLowerCase().includes(q));
@@ -109,129 +126,111 @@ export async function getMiembros(grupoId = null, search = '') {
 
 export async function getMiembro(id) {
   const gMap = await gruposMap();
-  const recs = await atFetchAll('miembros');
-  const rec = recs.find(r => r.id === id);
-  if (!rec) throw new Error('Miembro no encontrado');
-  return normMiembro(rec, gMap);
+  const row = check(await supabase.from('miembros').select('*').eq('id', id).maybeSingle());
+  if (!row) throw new Error('Miembro no encontrado');
+  return normMiembro(row, gMap);
 }
 
 function parseDate(val) {
   if (!val) return null;
   // Convierte DD/MM/AAAA → YYYY-MM-DD
-  const ddmm = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (ddmm) return `${ddmm[3]}-${ddmm[2].padStart(2,'0')}-${ddmm[1].padStart(2,'0')}`;
+  const ddmm = String(val).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (ddmm) return `${ddmm[3]}-${ddmm[2].padStart(2, '0')}-${ddmm[1].padStart(2, '0')}`;
   return val; // ya en formato ISO
 }
 
-function toAirtableFields(fields) {
+function toMiembroRow(f) {
   return {
-    Nombre: fields.nombre || '',
-    Rol: fields.rol || 'Miembro',
-    GrupoId: fields.grupo_id || '',
-    Telefono: fields.telefono || '',
-    Correo: fields.correo || '',
-    FechaNacimiento: parseDate(fields.fecha_nacimiento),
-    EstadoCivil: fields.estado_civil || 'Soltero',
-    NroHijos: fields.nro_hijos ?? 0,
-    EdadesHijos: fields.edades_hijos || '',
-    Aniversario: fields.aniversario || '',
-    Profesion: fields.profesion || '',
-    Ocupacion: fields.ocupacion || '',
-    TiempoIglesia: fields.tiempo_iglesia || '',
-    Direccion: fields.direccion || '',
-    Bautizado: !!fields.bautizado,
-    PadreEsp: fields.padre_esp || '',
-    DiscInicio: fields.disc_inicio || '',
-    DiscFin: fields.disc_fin || '',
-    Dones: fields.dones || '',
-    Habilidades: fields.habilidades || '',
-    Temperamentos: fields.temperamentos || [],
-    Mentor: fields.mentor || '',
-    Oracion: fields.oracion || '',
-    NivelIdx: fields.nivel_idx ?? 0,
-    CursosCompletados: fields.cursos_completados || [],
-    ApoyoCompletados: fields.apoyo_completados || [],
-    Sede: fields.sede || '',
+    nombre: f.nombre || '',
+    rol: f.rol || 'Miembro',
+    grupo_id: vacioANull(f.grupo_id),
+    telefono: f.telefono || '',
+    correo: f.correo || '',
+    fecha_nacimiento: parseDate(f.fecha_nacimiento),
+    estado_civil: f.estado_civil || 'Soltero',
+    nro_hijos: f.nro_hijos ?? 0,
+    edades_hijos: f.edades_hijos || '',
+    aniversario: f.aniversario || '',
+    profesion: f.profesion || '',
+    ocupacion: f.ocupacion || '',
+    tiempo_iglesia: f.tiempo_iglesia || '',
+    direccion: f.direccion || '',
+    bautizado: !!f.bautizado,
+    padre_esp: f.padre_esp || '',
+    disc_inicio: f.disc_inicio || '',
+    disc_fin: f.disc_fin || '',
+    dones: f.dones || '',
+    habilidades: f.habilidades || '',
+    temperamentos: f.temperamentos || [],
+    mentor: f.mentor || '',
+    oracion: f.oracion || '',
+    nivel_idx: f.nivel_idx ?? 0,
+    cursos_completados: f.cursos_completados || [],
+    apoyo_completados: f.apoyo_completados || [],
+    sede: f.sede || '',
   };
 }
 
 export async function createMiembro(fields) {
   const gMap = await gruposMap();
-  const atFields = toAirtableFields(fields);
-  const g = gMap[fields.grupo_id];
-  if (g) atFields.Grupo = g.nombre;
-  const res = await atPost('miembros', { records: [{ fields: atFields }] });
-  return normMiembro(res.records[0], gMap);
+  return normMiembro(check(await supabase.from('miembros').insert(toMiembroRow(fields)).select().single()), gMap);
 }
 
 export async function updateMiembro(id, fields) {
   const gMap = await gruposMap();
-  const atFields = toAirtableFields(fields);
-  const g = gMap[fields.grupo_id];
-  if (g) atFields.Grupo = g.nombre;
-  const res = await atPatch('miembros', id, atFields);
-  return normMiembro(res, gMap);
+  return normMiembro(check(await supabase.from('miembros').update(toMiembroRow(fields)).eq('id', id).select().single()), gMap);
 }
 
 export async function deleteMiembro(id) {
-  await atDelete('miembros', id);
+  check(await supabase.from('miembros').delete().eq('id', id));
 }
 
 // ===== EVENTOS =====
 export async function getEventos(year, month) {
-  const recs = await atFetchAll('eventos');
-  const m = String(month + 1).padStart(2, '0');
-  return recs
-    .map(normEvento)
-    .filter(e => e.fecha && e.fecha.startsWith(`${year}-${m}`))
-    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const desde = new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
+  const hasta = new Date(Date.UTC(year, month + 1, 1)).toISOString().slice(0, 10);
+  const rows = await selectAll('eventos', '*', q => q.gte('fecha', desde).lt('fecha', hasta));
+  return rows.map(normEvento).sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+function toEventoRow(f) {
+  return { titulo: f.titulo || '', fecha: f.fecha || null, hora: f.hora || '', lugar: f.lugar || '', tipo: f.tipo || 'reunion' };
 }
 
 export async function createEvento(fields) {
-  const res = await atPost('eventos', {
-    records: [{ fields: {
-      Titulo: fields.titulo || '',
-      Fecha: fields.fecha || '',
-      Hora: fields.hora || '',
-      Lugar: fields.lugar || '',
-      Tipo: fields.tipo || 'reunion',
-    }}],
-  });
-  return normEvento(res.records[0]);
+  return normEvento(check(await supabase.from('eventos').insert(toEventoRow(fields)).select().single()));
 }
 
 export async function updateEvento(id, fields) {
-  const res = await atPatch('eventos', id, {
-    Titulo: fields.titulo || '',
-    Fecha: fields.fecha || '',
-    Hora: fields.hora || '',
-    Lugar: fields.lugar || '',
-    Tipo: fields.tipo || 'reunion',
-  });
-  return normEvento(res);
+  return normEvento(check(await supabase.from('eventos').update(toEventoRow(fields)).eq('id', id).select().single()));
 }
 
 export async function deleteEvento(id) {
-  await atDelete('eventos', id);
+  check(await supabase.from('eventos').delete().eq('id', id));
 }
 
 // ===== STATS =====
 // grupoId opcional: si se pasa, las estadísticas quedan limitadas a ese grupo
 // (así un Líder de Grupo nunca ve totales que delaten el tamaño de otros grupos).
 export async function getStats(grupoId = null) {
-  const [miembrosRecs, grupos] = await Promise.all([atFetchAll('miembros'), atFetchAll('grupos')]);
-  const miembros = grupoId ? miembrosRecs.filter(r => r.fields.GrupoId === grupoId) : miembrosRecs;
-  const total = miembros.length;
-  const bautizados = miembros.filter(r => r.fields.Bautizado).length;
-  return { total, grupos: grupoId ? 1 : grupos.length, bautizados };
+  const contar = (q) => q.then(({ count, error }) => { if (error) throw new Error(error.message); return count ?? 0; });
+  const miembros = () => { const q = supabase.from('miembros').select('id', { count: 'exact', head: true }); return grupoId ? q.eq('grupo_id', grupoId) : q; };
+  const [total, bautizados, grupos] = await Promise.all([
+    contar(miembros()),
+    contar(miembros().eq('bautizado', true)),
+    grupoId ? Promise.resolve(1) : contar(supabase.from('grupos').select('id', { count: 'exact', head: true })),
+  ]);
+  return { total, grupos, bautizados };
 }
 
 export async function getMiembrosPorGrupo(grupoId = null) {
-  const [miembrosRecs, gMap] = await Promise.all([atFetchAll('miembros'), gruposMap()]);
-  const miembros = grupoId ? miembrosRecs.filter(r => r.fields.GrupoId === grupoId) : miembrosRecs;
+  const [rows, gMap] = await Promise.all([
+    selectAll('miembros', 'id,grupo_id', q => (grupoId ? q.eq('grupo_id', grupoId) : q)),
+    gruposMap(),
+  ]);
   const map = {};
-  miembros.forEach(r => {
-    const gId = r.fields.GrupoId || '';
+  rows.forEach(r => {
+    const gId = r.grupo_id || '';
     if (!map[gId]) map[gId] = { grupo_id: gId, nombre: gMap[gId]?.nombre || '—', sede: gMap[gId]?.sede || '', count: 0 };
     map[gId].count++;
   });
@@ -239,160 +238,156 @@ export async function getMiembrosPorGrupo(grupoId = null) {
 }
 
 export async function getCumpleaniosMes(month, grupoId = null) {
-  const [recs, gMap] = await Promise.all([atFetchAll('miembros'), gruposMap()]);
-  let list = recs
-    .map(r => normMiembro(r, gMap))
-    .filter(m => {
-      if (!m.fecha_nacimiento) return false;
-      return new Date(m.fecha_nacimiento).getUTCMonth() === month;
-    });
-  if (grupoId) list = list.filter(m => m.grupo_id === grupoId);
-  return list.sort((a, b) => new Date(a.fecha_nacimiento).getUTCDate() - new Date(b.fecha_nacimiento).getUTCDate());
+  const miembros = await getMiembros(grupoId);
+  return miembros
+    .filter(m => m.fecha_nacimiento && new Date(m.fecha_nacimiento).getUTCMonth() === month)
+    .sort((a, b) => new Date(a.fecha_nacimiento).getUTCDate() - new Date(b.fecha_nacimiento).getUTCDate());
 }
 
 // ===== SEGUIMIENTOS (planificador de citas de discipulado) =====
-function normSeguimiento(rec) {
-  const f = rec.fields;
+function normSeguimiento(r) {
   return {
-    id: rec.id,
-    miembro_id: f.MiembroId || '',
-    miembro_nombre: f.MiembroNombre || '',
-    grupo_id: f.GrupoId || '',
-    fecha: f.Fecha || '',
-    hora: f.Hora || '',
-    temas: f.Temas || '',
-    proximos_pasos: f.ProximosPasos || '',
-    versiculos: f.Versiculos || '',
-    estado: f.Estado || 'Programada',
-    notas: f.Notas || '',
-    lider_nombre: f.LiderNombre || '',
-    area: f.Area || '',
-    preguntas: f.Preguntas || '',
-    puntuacion: typeof f.Puntuacion === 'number' ? f.Puntuacion : null,
+    id: r.id,
+    miembro_id: r.miembro_id || '',
+    miembro_nombre: r.miembro_nombre || '',
+    grupo_id: r.grupo_id || '',
+    fecha: r.fecha || '',
+    hora: r.hora || '',
+    temas: r.temas || '',
+    proximos_pasos: r.proximos_pasos || '',
+    versiculos: r.versiculos || '',
+    estado: r.estado || 'Programada',
+    notas: r.notas || '',
+    lider_nombre: r.lider_nombre || '',
+    area: r.area || '',
+    preguntas: r.preguntas || '',
+    puntuacion: typeof r.puntuacion === 'number' ? r.puntuacion : null,
   };
 }
 
 export async function getSeguimientos(grupoId = null) {
-  const recs = await atFetchAll('seguimientos');
-  let list = recs.map(normSeguimiento);
-  if (grupoId) list = list.filter(s => s.grupo_id === grupoId);
-  return list.sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
+  const rows = await selectAll('seguimientos', '*', q => (grupoId ? q.eq('grupo_id', grupoId) : q));
+  return rows.map(normSeguimiento)
+    .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
 }
 
-export async function createSeguimiento(fields) {
-  const res = await atPost('seguimientos', { records: [{ fields: {
-    MiembroId: fields.miembro_id || '',
-    MiembroNombre: fields.miembro_nombre || '',
-    GrupoId: fields.grupo_id || '',
-    Fecha: fields.fecha || '',
-    Hora: fields.hora || '',
-    Temas: fields.temas || '',
-    ProximosPasos: fields.proximos_pasos || '',
-    Versiculos: fields.versiculos || '',
-    Estado: fields.estado || 'Programada',
-    Notas: fields.notas || '',
-    LiderNombre: fields.lider_nombre || '',
-    ...(fields.area ? { Area: fields.area } : {}),
-    Preguntas: fields.preguntas || '',
-  }}]});
-  return normSeguimiento(res.records[0]);
+export async function createSeguimiento(f) {
+  return normSeguimiento(check(await supabase.from('seguimientos').insert({
+    miembro_id: f.miembro_id,
+    miembro_nombre: f.miembro_nombre || '',
+    grupo_id: vacioANull(f.grupo_id),
+    fecha: vacioANull(f.fecha),
+    hora: f.hora || '',
+    temas: f.temas || '',
+    proximos_pasos: f.proximos_pasos || '',
+    versiculos: f.versiculos || '',
+    estado: f.estado || 'Programada',
+    notas: f.notas || '',
+    lider_nombre: f.lider_nombre || '',
+    area: vacioANull(f.area),
+    preguntas: f.preguntas || '',
+  }).select().single()));
 }
 
-export async function updateSeguimiento(id, fields) {
+export async function updateSeguimiento(id, f) {
   const patch = {};
-  if (fields.fecha !== undefined) patch.Fecha = fields.fecha;
-  if (fields.hora !== undefined) patch.Hora = fields.hora;
-  if (fields.temas !== undefined) patch.Temas = fields.temas;
-  if (fields.proximos_pasos !== undefined) patch.ProximosPasos = fields.proximos_pasos;
-  if (fields.versiculos !== undefined) patch.Versiculos = fields.versiculos;
-  if (fields.estado !== undefined) patch.Estado = fields.estado;
-  if (fields.notas !== undefined) patch.Notas = fields.notas;
-  if (fields.area !== undefined) patch.Area = fields.area || null;
-  if (fields.preguntas !== undefined) patch.Preguntas = fields.preguntas;
-  if (fields.puntuacion !== undefined) patch.Puntuacion = fields.puntuacion;
-  const res = await atPatch('seguimientos', id, patch);
-  return normSeguimiento(res);
+  ['fecha', 'hora', 'temas', 'proximos_pasos', 'versiculos', 'estado', 'notas', 'preguntas', 'puntuacion'].forEach(k => {
+    if (f[k] !== undefined) patch[k] = k === 'fecha' ? vacioANull(f[k]) : f[k];
+  });
+  if (f.area !== undefined) patch.area = vacioANull(f.area);
+  return normSeguimiento(check(await supabase.from('seguimientos').update(patch).eq('id', id).select().single()));
 }
 
 export async function deleteSeguimiento(id) {
-  await atDelete('seguimientos', id);
+  check(await supabase.from('seguimientos').delete().eq('id', id));
 }
 
 // ===== EVALUACIONES (rueda de vida) =====
-function normEvaluacion(rec) {
-  const f = rec.fields;
+function normEvaluacion(r) {
   const valores = {};
-  AREAS_RUEDA.forEach(a => { valores[a.key] = typeof f[a.key] === 'number' ? f[a.key] : null; });
+  AREAS_RUEDA.forEach(a => { valores[a.key] = typeof r[AREA_COL[a.key]] === 'number' ? r[AREA_COL[a.key]] : null; });
   return {
-    id: rec.id,
-    miembro_id: f.MiembroId || '',
-    miembro_nombre: f.MiembroNombre || '',
-    grupo_id: f.GrupoId || '',
-    fecha: f.Fecha || '',
-    fuente: f.Fuente || 'Líder',
-    estado: f.Estado || 'Pendiente',
+    id: r.id,
+    miembro_id: r.miembro_id || '',
+    miembro_nombre: r.miembro_nombre || '',
+    grupo_id: r.grupo_id || '',
+    fecha: r.fecha || '',
+    fuente: r.fuente || 'Líder',
+    estado: r.estado || 'Pendiente',
     valores,
-    comentario: f.Comentario || '',
-    lider_nombre: f.LiderNombre || '',
-    seguimiento_id: f.SeguimientoId || '',
+    comentario: r.comentario || '',
+    lider_nombre: r.lider_nombre || '',
+    seguimiento_id: r.seguimiento_id || '',
   };
 }
 
 export async function getEvaluaciones(grupoId = null, miembroId = null) {
-  const recs = await atFetchAll('evaluaciones');
-  let list = recs.map(normEvaluacion);
-  if (grupoId) list = list.filter(e => e.grupo_id === grupoId);
-  if (miembroId) list = list.filter(e => e.miembro_id === miembroId);
-  return list.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const rows = await selectAll('evaluaciones', '*', q => {
+    if (grupoId) q = q.eq('grupo_id', grupoId);
+    if (miembroId) q = q.eq('miembro_id', miembroId);
+    return q;
+  });
+  return rows.map(normEvaluacion).sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
-export async function createEvaluacion(fields) {
-  const f = {
-    MiembroId: fields.miembro_id || '',
-    MiembroNombre: fields.miembro_nombre || '',
-    GrupoId: fields.grupo_id || '',
-    Fecha: fields.fecha || '',
-    Fuente: fields.fuente || 'Líder',
-    Estado: fields.estado || 'Aprobada',
-    Comentario: fields.comentario || '',
-    LiderNombre: fields.lider_nombre || '',
-    SeguimientoId: fields.seguimiento_id || '',
+export async function createEvaluacion(f) {
+  const row = {
+    miembro_id: f.miembro_id,
+    miembro_nombre: f.miembro_nombre || '',
+    grupo_id: vacioANull(f.grupo_id),
+    fecha: f.fecha,
+    fuente: f.fuente || 'Líder',
+    estado: f.estado || 'Aprobada',
+    comentario: f.comentario || '',
+    lider_nombre: f.lider_nombre || '',
+    seguimiento_id: vacioANull(f.seguimiento_id),
   };
-  AREAS_RUEDA.forEach(a => { if (fields.valores?.[a.key] != null) f[a.key] = fields.valores[a.key]; });
-  const res = await atPost('evaluaciones', { records: [{ fields: f }] });
-  return normEvaluacion(res.records[0]);
+  AREAS_RUEDA.forEach(a => { if (f.valores?.[a.key] != null) row[AREA_COL[a.key]] = f.valores[a.key]; });
+  return normEvaluacion(check(await supabase.from('evaluaciones').insert(row).select().single()));
 }
 
-export async function updateEvaluacion(id, fields) {
+export async function updateEvaluacion(id, f) {
   const patch = {};
-  if (fields.estado !== undefined) patch.Estado = fields.estado;
-  const res = await atPatch('evaluaciones', id, patch);
-  return normEvaluacion(res);
+  if (f.estado !== undefined) patch.estado = f.estado;
+  return normEvaluacion(check(await supabase.from('evaluaciones').update(patch).eq('id', id).select().single()));
 }
 
 export async function deleteEvaluacion(id) {
-  await atDelete('evaluaciones', id);
+  check(await supabase.from('evaluaciones').delete().eq('id', id));
 }
 
 // ===== CLASES (Organizador de Temas: 5 pilares x 5 clases) =====
-function normClase(rec) {
-  const f = rec.fields;
-  const adj = (f.Archivo && f.Archivo[0]) ? { url: f.Archivo[0].url, filename: f.Archivo[0].filename, size: f.Archivo[0].size } : null;
+const BUCKET = 'clases';
+const URL_VIGENCIA_SEG = 3600;
+
+function normClase(r, urls = {}) {
+  const adj = r.archivo_path && urls[r.archivo_path]
+    ? { url: urls[r.archivo_path], filename: r.archivo_nombre || 'archivo.pdf', size: r.archivo_size || 0 }
+    : null;
   return {
-    id: rec.id,
-    pilar: f.Pilar || '',
-    orden: f.Orden ?? 0,
-    titulo: f.Titulo || '',
-    fecha: f.Fecha || '',
-    hora: f.Hora || '',
-    descripcion: f.Descripcion || '',
+    id: r.id,
+    pilar: r.pilar || '',
+    orden: r.orden ?? 0,
+    titulo: r.titulo || '',
+    fecha: r.fecha || '',
+    hora: r.hora || '',
+    descripcion: r.descripcion || '',
     archivo: adj,
   };
 }
 
+// Los PDF están en un bucket privado: se leen con URLs firmadas de corta vigencia.
+async function firmarUrls(rows) {
+  const paths = rows.map(r => r.archivo_path).filter(Boolean);
+  if (!paths.length) return {};
+  const data = check(await supabase.storage.from(BUCKET).createSignedUrls(paths, URL_VIGENCIA_SEG));
+  return Object.fromEntries(data.filter(d => d.signedUrl).map(d => [d.path, d.signedUrl]));
+}
+
 export async function getClases() {
-  const recs = await atFetchAll('clases');
-  return recs.map(normClase).sort((a, b) =>
+  const rows = await selectAll('clases');
+  const urls = await firmarUrls(rows);
+  return rows.map(r => normClase(r, urls)).sort((a, b) =>
     PILARES.findIndex(p => p.nombre === a.pilar) - PILARES.findIndex(p => p.nombre === b.pilar) || a.orden - b.orden
   );
 }
@@ -403,46 +398,45 @@ export async function getClasesDelMes(year, month) {
   return clases.filter(c => c.fecha && c.fecha.startsWith(`${year}-${m}`));
 }
 
-export async function createClase(fields) {
-  const res = await atPost('clases', { records: [{ fields: {
-    Pilar: fields.pilar || '',
-    Orden: fields.orden ?? 0,
-    Titulo: fields.titulo || '',
-    Fecha: fields.fecha || '',
-    Hora: fields.hora || '',
-    Descripcion: fields.descripcion || '',
-  }}]});
-  return normClase(res.records[0]);
+export async function createClase(f) {
+  const row = check(await supabase.from('clases').insert({
+    pilar: f.pilar || '',
+    orden: f.orden ?? 0,
+    titulo: f.titulo || '',
+    fecha: vacioANull(f.fecha),
+    hora: f.hora || '',
+    descripcion: f.descripcion || '',
+  }).select().single());
+  return normClase(row);
 }
 
-export async function updateClase(id, fields) {
+export async function updateClase(id, f) {
   const patch = {};
-  if (fields.titulo !== undefined) patch.Titulo = fields.titulo;
-  if (fields.fecha !== undefined) patch.Fecha = fields.fecha;
-  if (fields.hora !== undefined) patch.Hora = fields.hora;
-  if (fields.descripcion !== undefined) patch.Descripcion = fields.descripcion;
-  const res = await atPatch('clases', id, patch);
-  return normClase(res);
+  if (f.titulo !== undefined) patch.titulo = f.titulo;
+  if (f.fecha !== undefined) patch.fecha = vacioANull(f.fecha);
+  if (f.hora !== undefined) patch.hora = f.hora;
+  if (f.descripcion !== undefined) patch.descripcion = f.descripcion;
+  const row = check(await supabase.from('clases').update(patch).eq('id', id).select().single());
+  return normClase(row, await firmarUrls([row]));
 }
 
 export async function deleteClase(id) {
-  await atDelete('clases', id);
+  const row = check(await supabase.from('clases').select('archivo_path').eq('id', id).maybeSingle());
+  check(await supabase.from('clases').delete().eq('id', id));
+  if (row?.archivo_path) await supabase.storage.from(BUCKET).remove([row.archivo_path]);
 }
 
-const MAX_PDF_BYTES = 5 * 1024 * 1024; // límite práctico de subida directa (base64) de Airtable
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1]);
-    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
-    reader.readAsDataURL(file);
-  });
-}
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 export async function subirArchivoClase(claseId, file) {
-  if (file.size > MAX_PDF_BYTES) throw new Error('El archivo es muy grande (máximo 5MB).');
-  const base64 = await fileToBase64(file);
-  const result = await atUploadAttachment(claseId, 'Archivo', base64, file.name, file.type || 'application/pdf');
-  return normClase({ id: claseId, fields: result.fields });
+  if (file.size > MAX_PDF_BYTES) throw new Error('El archivo es muy grande (máximo 20MB).');
+  const previo = check(await supabase.from('clases').select('archivo_path').eq('id', claseId).maybeSingle());
+  const limpio = file.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.\-]+/g, '_');
+  const path = `${claseId}/${Date.now()}-${limpio}`;
+  check(await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type || 'application/pdf' }));
+  const row = check(await supabase.from('clases')
+    .update({ archivo_path: path, archivo_nombre: file.name, archivo_size: file.size })
+    .eq('id', claseId).select().single());
+  if (previo?.archivo_path) await supabase.storage.from(BUCKET).remove([previo.archivo_path]);
+  return normClase(row, await firmarUrls([row]));
 }
