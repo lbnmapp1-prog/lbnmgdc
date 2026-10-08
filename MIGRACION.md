@@ -1,8 +1,8 @@
-# Migración de Airtable + Netlify a Supabase + Vercel
+# Migración de Airtable a Supabase (se mantiene Netlify)
 
 Qué cambió: los datos y el inicio de sesión viven en **Supabase** (Postgres con reglas de
-seguridad por rol), la web se publica en **Vercel**, y la única función de servidor
-(`api/admin-users.js`, crear/editar/borrar usuarios) corre en Vercel. Ya no hay ningún
+seguridad por rol), la web sigue publicada en **Netlify**, y la única función de servidor
+(`netlify/functions/admin-users.js`, crear/editar/borrar usuarios) corre en Netlify. Ya no hay ningún
 secreto escrito en el código del navegador.
 
 ## 1. Supabase (una sola vez)
@@ -11,23 +11,23 @@ secreto escrito en el código del navegador.
    bucket privado `clases` para los PDF, y las funciones del formulario público).
 2. **Authentication → Providers → Email**: desactiva **Enable email signups** (los
    usuarios los crea solo un administrador).
-3. **Authentication → URL Configuration**: *Site URL* = la dirección de tu app en Vercel
-   (por ejemplo `https://pastoreo-gdc.vercel.app`); agrégala también en *Redirect URLs*.
+3. **Authentication → URL Configuration**: *Site URL* = la dirección de tu sitio en Netlify
+   (por ejemplo `https://tu-sitio.netlify.app`); agrégala también en *Redirect URLs*.
    Sin esto los correos de "elegir contraseña" no vuelven a la app.
 4. **Authentication → SMTP**: configura un SMTP propio (Resend, Brevo, etc.). El correo
    por defecto de Supabase permite muy pocos envíos por hora y no alcanza para avisar a
    todos los usuarios.
 5. **Settings → API**: copia `Project URL`, `anon public` y `service_role`.
 
-## 2. Código y Vercel
+## 2. Código y Netlify
 
 1. Edita `js/config.js` con el `Project URL` y la `anon` key (son públicas por diseño).
-2. En Vercel: *Add New → Project* → importa el repositorio (Framework: **Other**, sin build).
-3. **Settings → Environment Variables** (solo en Vercel, nunca en el repositorio):
+2. En Netlify, el sitio ya conectado al repositorio se vuelve a publicar solo al unir el PR a `main` (sin comando de build, carpeta de publicación `/`).
+3. **Site configuration → Environment variables** (solo en Netlify, nunca en el repositorio):
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`  ← secreta; da acceso total a la base
-4. Despliega.
+4. Después de agregar las variables, haz **Deploys → Trigger deploy → Deploy site** para que la función las lea.
 
 ## 3. Día de la migración (corte de una vez)
 
@@ -37,7 +37,7 @@ secreto escrito en el código del navegador.
    export AIRTABLE_TOKEN=...            # token de Airtable con solo lectura
    export SUPABASE_URL=https://TU_PROYECTO.supabase.co
    export SUPABASE_SERVICE_ROLE_KEY=...
-   export APP_URL=https://tu-app.vercel.app
+   export APP_URL=https://tu-sitio.netlify.app
 
    node scripts/migrar-airtable-a-supabase.mjs                 # simulacro: valida y cuenta, no escribe
    node scripts/migrar-airtable-a-supabase.mjs --ejecutar      # migración real
@@ -56,7 +56,6 @@ secreto escrito en el código del navegador.
 - **Revoca el token de Airtable** que estaba en el código (`js/airtable.js`, ya eliminado):
   sigue visible en el historial de git. Airtable → Developer hub → tokens → *Revoke*.
 - Cuando estés conforme, pasa la base de Airtable a solo lectura o archívala.
-- Deja de usar Netlify (se eliminó `netlify.toml` y su función).
 - Opcional: quita las columnas `airtable_id` de las tablas.
 
 ## Cómo está protegido

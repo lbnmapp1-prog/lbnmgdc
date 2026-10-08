@@ -1,8 +1,8 @@
-// Función de Vercel: operaciones privilegiadas sobre usuarios del sistema.
+// Función de Netlify: operaciones privilegiadas sobre usuarios del sistema.
 // Corre en el servidor: la SUPABASE_SERVICE_ROLE_KEY nunca llega al navegador.
 // Cada petición se valida contra el rol real de quien llama (tabla `perfiles`).
 //
-// Variables de entorno (Vercel > Settings > Environment Variables):
+// Variables de entorno (Netlify > Site configuration > Environment variables):
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 const ROLES_ALTOS = ['Pastor de Área', 'Super Usuario'];
@@ -138,18 +138,21 @@ async function eliminar(caller, body) {
   return { ok: true };
 }
 
-module.exports = async (req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const send = (status, body) => res.status(status).json(body);
+exports.handler = async (event) => {
+  const send = (status, body) => ({
+    statusCode: status,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    body: JSON.stringify(body),
+  });
   try {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) return send(500, { error: 'Servidor sin configurar.' });
-    const caller = await getCaller(req);
+    const caller = await getCaller({ headers: event.headers });
     if (!caller || !ROLES_ADMIN.includes(caller.rol)) return send(403, { error: 'No autorizado.' });
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    const body = event.body ? JSON.parse(event.body) : {};
 
-    if (req.method === 'POST') return send(200, await crear(caller, body));
-    if (req.method === 'PATCH') return send(200, await editar(caller, body));
-    if (req.method === 'DELETE') return send(200, await eliminar(caller, body));
+    if (event.httpMethod === 'POST') return send(200, await crear(caller, body));
+    if (event.httpMethod === 'PATCH') return send(200, await editar(caller, body));
+    if (event.httpMethod === 'DELETE') return send(200, await eliminar(caller, body));
     return send(405, { error: 'Método no soportado.' });
   } catch (e) {
     if (e instanceof HttpError) return send(e.status, { error: e.message });
