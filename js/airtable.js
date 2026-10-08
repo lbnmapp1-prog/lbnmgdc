@@ -8,6 +8,7 @@ export const TABLES = {
   usuarios:     'tblbCOwG5JN1aNVcj',
   seguimientos: 'tblTo1PtutoYbMq8a',
   clases:       'tbl22JS1OMLwY1Dcw',
+  evaluaciones: 'tblwWvgxg1cD1hH3K',
 };
 
 const BASE_URL = `https://api.airtable.com/v0/${BASE_ID}`;

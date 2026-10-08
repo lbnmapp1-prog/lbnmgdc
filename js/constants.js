@@ -21,3 +21,16 @@ export const PILARES = [
 export const CLASES_POR_PILAR = 5;
 
 export const ESTADOS_SEGUIMIENTO = ['Programada', 'Realizada', 'Cancelada'];
+
+// Rueda de vida: 9 áreas evaluadas del 1 al 10. `key` es el nombre del campo en Airtable.
+export const AREAS_RUEDA = [
+  { key: 'Dios',       label: 'Relación con Dios' },
+  { key: 'Familia',    label: 'Familia' },
+  { key: 'Relaciones', label: 'Relaciones' },
+  { key: 'Amigos',     label: 'Amigos' },
+  { key: 'Salud',      label: 'Salud' },
+  { key: 'Dinero',     label: 'Dinero' },
+  { key: 'Profesion',  label: 'Profesión' },
+  { key: 'VidaAdulta', label: 'Vida adulta' },
+  { key: 'Ocio',       label: 'Ocio' },
+];

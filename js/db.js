@@ -1,5 +1,5 @@
 import { atFetchAll, atPost, atPatch, atDelete, atUploadAttachment } from './airtable.js';
-import { PILARES } from './constants.js';
+import { PILARES, AREAS_RUEDA } from './constants.js';
 
 // ---- normalizadores ----
 function normGrupo(rec) {
@@ -308,6 +308,60 @@ export async function updateSeguimiento(id, fields) {
 
 export async function deleteSeguimiento(id) {
   await atDelete('seguimientos', id);
+}
+
+// ===== EVALUACIONES (rueda de vida) =====
+function normEvaluacion(rec) {
+  const f = rec.fields;
+  const valores = {};
+  AREAS_RUEDA.forEach(a => { valores[a.key] = typeof f[a.key] === 'number' ? f[a.key] : null; });
+  return {
+    id: rec.id,
+    miembro_id: f.MiembroId || '',
+    miembro_nombre: f.MiembroNombre || '',
+    grupo_id: f.GrupoId || '',
+    fecha: f.Fecha || '',
+    fuente: f.Fuente || 'Líder',
+    estado: f.Estado || 'Pendiente',
+    valores,
+    comentario: f.Comentario || '',
+    lider_nombre: f.LiderNombre || '',
+  };
+}
+
+export async function getEvaluaciones(grupoId = null, miembroId = null) {
+  const recs = await atFetchAll('evaluaciones');
+  let list = recs.map(normEvaluacion);
+  if (grupoId) list = list.filter(e => e.grupo_id === grupoId);
+  if (miembroId) list = list.filter(e => e.miembro_id === miembroId);
+  return list.sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+export async function createEvaluacion(fields) {
+  const f = {
+    MiembroId: fields.miembro_id || '',
+    MiembroNombre: fields.miembro_nombre || '',
+    GrupoId: fields.grupo_id || '',
+    Fecha: fields.fecha || '',
+    Fuente: fields.fuente || 'Líder',
+    Estado: fields.estado || 'Aprobada',
+    Comentario: fields.comentario || '',
+    LiderNombre: fields.lider_nombre || '',
+  };
+  AREAS_RUEDA.forEach(a => { if (fields.valores?.[a.key] != null) f[a.key] = fields.valores[a.key]; });
+  const res = await atPost('evaluaciones', { records: [{ fields: f }] });
+  return normEvaluacion(res.records[0]);
+}
+
+export async function updateEvaluacion(id, fields) {
+  const patch = {};
+  if (fields.estado !== undefined) patch.Estado = fields.estado;
+  const res = await atPatch('evaluaciones', id, patch);
+  return normEvaluacion(res);
+}
+
+export async function deleteEvaluacion(id) {
+  await atDelete('evaluaciones', id);
 }
 
 // ===== CLASES (Organizador de Temas: 5 pilares x 5 clases) =====

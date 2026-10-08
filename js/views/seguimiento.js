@@ -1,4 +1,6 @@
-import { getSeguimientos, createSeguimiento, updateSeguimiento, deleteSeguimiento, getMiembros } from '../db.js';
+import { getSeguimientos, createSeguimiento, updateSeguimiento, deleteSeguimiento, getMiembros, getEvaluaciones, updateEvaluacion } from '../db.js';
+import { AREAS_RUEDA } from '../constants.js';
+import { promedio } from '../rueda.js';
 import { isAdmin, getCurrentGrupoId, getCurrentProfile } from '../main.js';
 import { ESTADOS_SEGUIMIENTO } from '../constants.js';
 
@@ -25,6 +27,12 @@ export async function renderSeguimiento(container, navigate) {
     container.innerHTML = `<div class="card" style="color:#9a3b52;padding:24px;"><b>Error al cargar Seguimiento:</b><br><code style="font-size:12px;">${esc(e.message)}</code><br><br>Si acabas de crear la tabla "seguimientos" en Airtable, revisa que el nombre y los campos coincidan exactamente.</div>`;
     return;
   }
+  let pendientes = [];
+  async function cargarPendientes() {
+    try { pendientes = (await getEvaluaciones(grupoId)).filter(e => e.estado === 'Pendiente' && e.fuente === 'Autoevaluación'); }
+    catch { pendientes = []; }
+  }
+  await cargarPendientes();
   let editing = null; // null | 'new' | id
   let filtro = 'Programada';
 
@@ -103,6 +111,23 @@ export async function renderSeguimiento(container, navigate) {
         <div class="flex gap-8" style="flex-wrap:wrap;">${tabs}</div>
         ${!editing ? `<button class="btn-primary sm" id="btn-nueva-cita">+ Nueva cita de seguimiento</button>` : ''}
       </div>
+      ${pendientes.length ? `
+      <div class="form-section" style="margin-bottom:18px;border-color:#e6c98a;">
+        <div class="section-label" style="color:#b9892b;">Autoevaluaciones por aprobar (${pendientes.length})</div>
+        ${pendientes.map(p => `
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid #eef1f6;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <div style="font-weight:700;color:#14223a;">${esc(p.miembro_nombre)} <span style="font-weight:500;color:#8a94a8;font-size:12px;">· ${esc(p.fecha)} · Prom. ${promedio(p.valores) ?? '—'}</span></div>
+              <div style="font-size:12px;color:#56607a;margin-top:4px;">${AREAS_RUEDA.map(a => `${a.label}: <b>${p.valores[a.key] ?? '—'}</b>`).join(' · ')}</div>
+              ${p.comentario ? `<div style="font-size:12.5px;color:#56607a;margin-top:4px;font-style:italic;white-space:pre-wrap;">${esc(p.comentario)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn-primary sm btn-aprobar-eval" data-id="${esc(p.id)}">Aprobar</button>
+              <button class="btn-secondary btn-rechazar-eval" data-id="${esc(p.id)}">Rechazar</button>
+              <button class="btn-secondary btn-ver-ficha" data-id="${esc(p.miembro_id)}">Ver ficha</button>
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
       ${editing === 'new' ? formHtml(null) : ''}
       ${segEditando ? formHtml(segEditando) : ''}
       ${rows}
@@ -110,6 +135,20 @@ export async function renderSeguimiento(container, navigate) {
 
     container.querySelectorAll('.report-tab').forEach(tab => {
       tab.addEventListener('click', () => { filtro = tab.dataset.filtro; render(); });
+    });
+
+    container.querySelectorAll('.btn-aprobar-eval, .btn-rechazar-eval').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const aprobar = btn.classList.contains('btn-aprobar-eval');
+        if (!aprobar && !confirm('¿Rechazar esta autoevaluación?')) return;
+        btn.disabled = true;
+        await updateEvaluacion(btn.dataset.id, { estado: aprobar ? 'Aprobada' : 'Rechazada' });
+        await cargarPendientes();
+        render();
+      });
+    });
+    container.querySelectorAll('.btn-ver-ficha').forEach(btn => {
+      btn.addEventListener('click', () => navigate('ficha', { id: btn.dataset.id }));
     });
 
     container.querySelector('#btn-nueva-cita')?.addEventListener('click', () => { editing = 'new'; render(); });
