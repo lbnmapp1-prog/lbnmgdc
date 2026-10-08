@@ -1,7 +1,7 @@
 import { getMiembro, deleteMiembro, getEvaluaciones, createEvaluacion, deleteEvaluacion } from '../db.js';
 import { isAdmin, getCurrentGrupoId, getCurrentProfile } from '../main.js';
 import { MILESTONES, CURSOS, APOYO, AREAS_RUEDA } from '../constants.js';
-import { ruedaSvg, promedio } from '../rueda.js';
+import { ruedaSvg, promedio, snapshot, progresoArea } from '../rueda.js';
 
 const COLORS = ['#1e5aa8','#2f7d6b','#9a5b2b','#6b4e9a','#9a3b52','#2b6f8a','#3a6ea5','#7a7a3a'];
 
@@ -202,10 +202,10 @@ async function renderRueda(card, m) {
   let showForm = false;
 
   function draw() {
-    const aprobadas = evals.filter(e => e.estado === 'Aprobada');
-    const lider = aprobadas.filter(e => e.fuente === 'Líder');
-    const auto = aprobadas.filter(e => e.fuente === 'Autoevaluación');
-    const actual = lider[0], previa = lider[1], autoActual = auto[0];
+    const auto = evals.filter(e => e.estado === 'Aprobada' && e.fuente === 'Autoevaluación');
+    const actual = snapshot(evals, 0);
+    const previa = snapshot(evals, 1);
+    const autoActual = auto[0];
     const pendientes = evals.filter(e => e.estado === 'Pendiente').length;
 
     const series = [];
@@ -220,15 +220,27 @@ async function renderRueda(card, m) {
     ].filter(Boolean).join('');
 
     const cambios = actual && previa ? AREAS_RUEDA.map(a => {
-      const d = (actual.valores[a.key] ?? 0) - (previa.valores[a.key] ?? 0);
+      if (actual.valores[a.key] == null || previa.valores[a.key] == null) return '';
+      const d = actual.valores[a.key] - previa.valores[a.key];
       if (!d) return '';
       return `<span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px;background:${d > 0 ? '#eef6f3' : '#fbeef1'};color:${d > 0 ? '#2f7d6b' : '#9a3b52'};">${a.label} ${d > 0 ? '+' : ''}${d}</span>`;
+    }).join('') : '';
+
+    const progreso = actual ? AREAS_RUEDA.map(a => {
+      const p = progresoArea(evals, a.key);
+      if (!p) return '';
+      const d = p.actual - p.inicio;
+      return `<div style="background:#f7f9fb;border:1px solid #eef1f6;border-radius:10px;padding:8px 12px;">
+        <div style="font-size:11.5px;color:#8a94a8;font-weight:600;">${a.label}</div>
+        <div style="font-size:14px;font-weight:700;color:#14223a;">${p.inicio} → ${p.actual} <span style="font-size:12px;color:${d > 0 ? '#2f7d6b' : d < 0 ? '#9a3b52' : '#8a94a8'};">${d > 0 ? '▲' : d < 0 ? '▼' : '='} ${d > 0 ? '+' : ''}${d}</span></div>
+        <div style="font-size:11px;color:#a9b2c2;">${p.n} registro(s)</div>
+      </div>`;
     }).join('') : '';
 
     const historial = evals.map(e => `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #eef1f6;font-size:13px;flex-wrap:wrap;">
         <span style="font-family:'IBM Plex Mono',monospace;color:#56607a;">${esc(e.fecha)}</span>
-        <span>${esc(e.fuente)}</span>
+        <span>${esc(e.fuente)}${AREAS_RUEDA.filter(a => e.valores[a.key] != null).length === 1 ? ` · ${esc(AREAS_RUEDA.find(a => e.valores[a.key] != null).label)}` : ''}</span>
         <span style="font-size:11px;font-weight:700;color:#fff;background:${e.estado === 'Aprobada' ? '#2f7d6b' : e.estado === 'Pendiente' ? '#b9892b' : '#9a3b52'};padding:2px 8px;border-radius:20px;">${esc(e.estado)}</span>
         <span style="color:#8a94a8;">Prom. ${promedio(e.valores) ?? '—'}</span>
         ${e.comentario ? `<span style="color:#56607a;font-style:italic;flex-basis:100%;white-space:pre-wrap;">${esc(e.comentario)}</span>` : ''}
@@ -251,7 +263,8 @@ async function renderRueda(card, m) {
       ${series.length ? `
         <div style="display:flex;justify-content:center;">${ruedaSvg(series)}</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;font-size:12.5px;color:#56607a;margin-top:6px;">${legend}</div>
-        ${cambios ? `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px;">${cambios}</div>` : ''}`
+        ${cambios ? `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px;">${cambios}</div>` : ''}
+        ${progreso ? `<div class="section-label" style="margin-top:20px;">Avance por área (primer registro → actual)</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">${progreso}</div>` : ''}`
         : `<div class="empty-state">Aún no hay evaluaciones aprobadas. Crea una o envía el enlace al miembro.</div>`}
       ${evals.length ? `<div style="margin-top:16px;">${historial}</div>` : ''}
       <style>#rueda-card i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;}</style>`;
@@ -296,7 +309,7 @@ async function renderRueda(card, m) {
   }
 
   function formHtml() {
-    const base = evals.find(e => e.estado === 'Aprobada' && e.fuente === 'Líder');
+    const base = snapshot(evals, 0);
     const hoy = new Date().toISOString().slice(0, 10);
     return `
     <div class="form-section" style="margin-bottom:18px;">

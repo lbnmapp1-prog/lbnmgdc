@@ -266,6 +266,9 @@ function normSeguimiento(rec) {
     estado: f.Estado || 'Programada',
     notas: f.Notas || '',
     lider_nombre: f.LiderNombre || '',
+    area: f.Area || '',
+    preguntas: f.Preguntas || '',
+    puntuacion: typeof f.Puntuacion === 'number' ? f.Puntuacion : null,
   };
 }
 
@@ -289,6 +292,8 @@ export async function createSeguimiento(fields) {
     Estado: fields.estado || 'Programada',
     Notas: fields.notas || '',
     LiderNombre: fields.lider_nombre || '',
+    ...(fields.area ? { Area: fields.area } : {}),
+    Preguntas: fields.preguntas || '',
   }}]});
   return normSeguimiento(res.records[0]);
 }
@@ -302,6 +307,9 @@ export async function updateSeguimiento(id, fields) {
   if (fields.versiculos !== undefined) patch.Versiculos = fields.versiculos;
   if (fields.estado !== undefined) patch.Estado = fields.estado;
   if (fields.notas !== undefined) patch.Notas = fields.notas;
+  if (fields.area !== undefined) patch.Area = fields.area || null;
+  if (fields.preguntas !== undefined) patch.Preguntas = fields.preguntas;
+  if (fields.puntuacion !== undefined) patch.Puntuacion = fields.puntuacion;
   const res = await atPatch('seguimientos', id, patch);
   return normSeguimiento(res);
 }
@@ -326,6 +334,7 @@ function normEvaluacion(rec) {
     valores,
     comentario: f.Comentario || '',
     lider_nombre: f.LiderNombre || '',
+    seguimiento_id: f.SeguimientoId || '',
   };
 }
 
@@ -347,6 +356,7 @@ export async function createEvaluacion(fields) {
     Estado: fields.estado || 'Aprobada',
     Comentario: fields.comentario || '',
     LiderNombre: fields.lider_nombre || '',
+    SeguimientoId: fields.seguimiento_id || '',
   };
   AREAS_RUEDA.forEach(a => { if (fields.valores?.[a.key] != null) f[a.key] = fields.valores[a.key]; });
   const res = await atPost('evaluaciones', { records: [{ fields: f }] });

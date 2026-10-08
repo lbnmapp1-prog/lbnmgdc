@@ -1,6 +1,6 @@
-import { getSeguimientos, createSeguimiento, updateSeguimiento, deleteSeguimiento, getMiembros, getEvaluaciones, updateEvaluacion } from '../db.js';
-import { AREAS_RUEDA } from '../constants.js';
-import { promedio } from '../rueda.js';
+import { getSeguimientos, createSeguimiento, updateSeguimiento, deleteSeguimiento, getMiembros, getEvaluaciones, updateEvaluacion, createEvaluacion } from '../db.js';
+import { AREAS_RUEDA, PREGUNTAS_AREA } from '../constants.js';
+import { promedio, snapshot } from '../rueda.js';
 import { isAdmin, getCurrentGrupoId, getCurrentProfile } from '../main.js';
 import { ESTADOS_SEGUIMIENTO } from '../constants.js';
 
@@ -28,12 +28,18 @@ export async function renderSeguimiento(container, navigate) {
     return;
   }
   let pendientes = [];
+  let evaluaciones = [];
   async function cargarPendientes() {
-    try { pendientes = (await getEvaluaciones(grupoId)).filter(e => e.estado === 'Pendiente' && e.fuente === 'Autoevaluación'); }
-    catch { pendientes = []; }
+    try {
+      evaluaciones = await getEvaluaciones(grupoId);
+      pendientes = evaluaciones.filter(e => e.estado === 'Pendiente' && e.fuente === 'Autoevaluación');
+    } catch { evaluaciones = []; pendientes = []; }
   }
+  const areaLabel = key => AREAS_RUEDA.find(a => a.key === key)?.label || '';
+  const valorActual = (miembroId, key) => snapshot(evaluaciones.filter(e => e.miembro_id === miembroId), 0)?.valores[key] ?? null;
   await cargarPendientes();
   let editing = null; // null | 'new' | id
+  let cerrando = null; // id de la cita que se está cerrando
   let filtro = 'Programada';
 
   function miembroOptions(sel) {
@@ -54,6 +60,10 @@ export async function renderSeguimiento(container, navigate) {
           <select id="sg-estado">${ESTADOS_SEGUIMIENTO.map(e => `<option value="${e}" ${(f.estado || 'Programada') === e ? 'selected' : ''}>${e}</option>`).join('')}</select>
         </div>
         <div class="form-group"><label>Versículo(s)</label><input id="sg-versiculos" placeholder="Ej: Filipenses 4:13" value="${esc(f.versiculos)}" /></div>
+        <div class="form-group"><label>Área de la rueda a trabajar</label>
+          <select id="sg-area"><option value="">— Conversación general —</option>${AREAS_RUEDA.map(a => `<option value="${a.key}" ${f.area === a.key ? 'selected' : ''}>${a.label}</option>`).join('')}</select>
+        </div>
+        <div class="form-group span2"><label>Preguntas guía <span style="font-weight:400;color:#8a94a8;">(se sugieren según el área; puedes editarlas)</span></label><textarea id="sg-preguntas" rows="4" placeholder="Elige un área para ver preguntas sugeridas...">${esc(f.preguntas)}</textarea></div>
         <div class="form-group span2"><label>Temas a tratar</label><textarea id="sg-temas" rows="2" placeholder="¿De qué van a hablar en esta cita?">${esc(f.temas)}</textarea></div>
         <div class="form-group span2"><label>Próximos pasos</label><textarea id="sg-pasos" rows="2" placeholder="Compromisos o tareas para la próxima cita">${esc(f.proximos_pasos)}</textarea></div>
         <div class="form-group span2"><label>Notas</label><textarea id="sg-notas" rows="2" placeholder="Notas después de la conversación...">${esc(f.notas)}</textarea></div>
@@ -62,6 +72,32 @@ export async function renderSeguimiento(container, navigate) {
       <div class="form-actions" style="margin-top:14px;">
         <button class="btn-secondary" id="btn-cancel-sg">Cancelar</button>
         <button class="btn-primary" id="btn-save-sg">${f.id ? 'Guardar cambios' : 'Programar cita'}</button>
+      </div>
+    </div>`;
+  }
+
+  function cierreHtml(s) {
+    if (!s) return '';
+    const hoy = new Date().toISOString().slice(0, 10);
+    const actual = s.area ? valorActual(s.miembro_id, s.area) : null;
+    return `
+    <div class="form-section" id="sg-cierre" style="margin-bottom:18px;border-color:#2f7d6b;">
+      <div class="section-label" style="color:#2f7d6b;">Cerrar cita con ${esc(s.miembro_nombre)}</div>
+      ${s.area ? `
+        <div class="form-group">
+          <label>¿Cómo está hoy en <b>${esc(areaLabel(s.area))}</b>? (1-10) ${actual != null ? `<span style="font-weight:400;color:#8a94a8;">· última puntuación: ${actual}</span>` : '<span style="font-weight:400;color:#8a94a8;">· primer registro de esta área</span>'}</label>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <input id="cr-punt" type="range" min="1" max="10" step="1" value="${actual ?? 5}" style="flex:1;accent-color:#1e5aa8;" />
+            <span id="cr-punt-val" style="font-size:22px;font-weight:700;color:#1e5aa8;min-width:28px;">${actual ?? 5}</span>
+          </div>
+        </div>` : ''}
+      <div class="form-group"><label>Notas de la conversación</label><textarea id="cr-notas" rows="3">${esc(s.notas)}</textarea></div>
+      <div class="form-group"><label>Próximos pasos / compromisos</label><textarea id="cr-pasos" rows="2">${esc(s.proximos_pasos)}</textarea></div>
+      <div class="form-group"><label>Programar próxima cita (opcional)</label><input id="cr-proxima" type="date" min="${hoy}" /></div>
+      <div id="cr-error" class="login-error hidden" style="margin-top:10px;"></div>
+      <div class="form-actions" style="margin-top:14px;">
+        <button class="btn-secondary" id="btn-cancel-cierre">Cancelar</button>
+        <button class="btn-primary" id="btn-save-cierre">Guardar y marcar realizada</button>
       </div>
     </div>`;
   }
@@ -89,8 +125,10 @@ export async function renderSeguimiento(container, navigate) {
             <span style="font-weight:700;color:#14223a;">${esc(s.miembro_nombre) || '—'}</span>
             <span style="font-size:10.5px;font-weight:700;color:#fff;background:${color};padding:2px 9px;border-radius:20px;">${esc(s.estado)}</span>
             ${s.hora ? `<span style="font-size:12px;color:#8a94a8;">${esc(s.hora)}</span>` : ''}
+            ${s.area ? `<span style="font-size:11px;font-weight:700;color:#1e5aa8;background:#e8f0fb;padding:2px 9px;border-radius:20px;">◎ ${esc(areaLabel(s.area))}${s.puntuacion != null ? ` · ${s.puntuacion}/10` : ''}</span>` : ''}
           </div>
           ${s.temas ? `<div style="font-size:13px;color:#3d4860;margin-top:5px;white-space:pre-wrap;">${esc(s.temas)}</div>` : ''}
+          ${s.preguntas && s.estado === 'Programada' ? `<details style="margin-top:6px;"><summary style="font-size:12px;color:#1e5aa8;cursor:pointer;font-weight:600;">Preguntas guía</summary><div style="font-size:12.5px;color:#3d4860;white-space:pre-wrap;margin-top:4px;">${esc(s.preguntas)}</div></details>` : ''}
           ${s.versiculos ? `<div style="font-size:12px;color:#6b4e9a;margin-top:4px;font-style:italic;">📖 ${esc(s.versiculos)}</div>` : ''}
           ${s.proximos_pasos ? `<div style="font-size:12.5px;color:#3d4860;margin-top:6px;white-space:pre-wrap;"><b style="color:#1e5aa8;">Próximos pasos:</b> ${esc(s.proximos_pasos)}</div>` : ''}
           ${s.notas ? `<div style="font-size:12.5px;color:#56607a;margin-top:4px;white-space:pre-wrap;"><b style="color:#2f7d6b;">Notas:</b> ${esc(s.notas)}</div>` : ''}
@@ -109,7 +147,7 @@ export async function renderSeguimiento(container, navigate) {
     <div class="page-wrap fade-up">
       <div class="flex mb-18" style="align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
         <div class="flex gap-8" style="flex-wrap:wrap;">${tabs}</div>
-        ${!editing ? `<button class="btn-primary sm" id="btn-nueva-cita">+ Nueva cita de seguimiento</button>` : ''}
+        ${!editing && !cerrando ? `<button class="btn-primary sm" id="btn-nueva-cita">+ Nueva cita de seguimiento</button>` : ''}
       </div>
       ${pendientes.length ? `
       <div class="form-section" style="margin-bottom:18px;border-color:#e6c98a;">
@@ -128,6 +166,7 @@ export async function renderSeguimiento(container, navigate) {
             </div>
           </div>`).join('')}
       </div>` : ''}
+      ${cerrando ? cierreHtml(seguimientos.find(s => s.id === cerrando)) : ''}
       ${editing === 'new' ? formHtml(null) : ''}
       ${segEditando ? formHtml(segEditando) : ''}
       ${rows}
@@ -151,11 +190,11 @@ export async function renderSeguimiento(container, navigate) {
       btn.addEventListener('click', () => navigate('ficha', { id: btn.dataset.id }));
     });
 
-    container.querySelector('#btn-nueva-cita')?.addEventListener('click', () => { editing = 'new'; render(); });
+    container.querySelector('#btn-nueva-cita')?.addEventListener('click', () => { editing = 'new'; cerrando = null; render(); });
     container.querySelector('#btn-cancel-sg')?.addEventListener('click', () => { editing = null; render(); });
 
     container.querySelectorAll('.btn-edit-sg').forEach(btn => {
-      btn.addEventListener('click', () => { editing = btn.dataset.id; render(); });
+      btn.addEventListener('click', () => { editing = btn.dataset.id; cerrando = null; render(); });
     });
 
     container.querySelectorAll('.btn-del-sg').forEach(btn => {
@@ -168,11 +207,54 @@ export async function renderSeguimiento(container, navigate) {
     });
 
     container.querySelectorAll('.btn-check-sg').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await updateSeguimiento(btn.dataset.id, { estado: 'Realizada' });
-        seguimientos = await getSeguimientos(grupoId);
+      btn.addEventListener('click', () => { cerrando = btn.dataset.id; editing = null; render(); container.querySelector('#sg-cierre')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    });
+
+    container.querySelector('#cr-punt')?.addEventListener('input', e => { container.querySelector('#cr-punt-val').textContent = e.target.value; });
+    container.querySelector('#btn-cancel-cierre')?.addEventListener('click', () => { cerrando = null; render(); });
+    container.querySelector('#btn-save-cierre')?.addEventListener('click', async (ev) => {
+      const s = seguimientos.find(x => x.id === cerrando);
+      const errEl = container.querySelector('#cr-error');
+      const btn = ev.target;
+      const notas = container.querySelector('#cr-notas').value;
+      const pasos = container.querySelector('#cr-pasos').value;
+      const proxima = container.querySelector('#cr-proxima').value;
+      const punt = s.area ? Number(container.querySelector('#cr-punt').value) : null;
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      try {
+        await updateSeguimiento(s.id, { estado: 'Realizada', notas, proximos_pasos: pasos, ...(punt != null ? { puntuacion: punt } : {}) });
+        if (s.area) {
+          // Evaluación parcial: solo esta área; el resto de la rueda se conserva del último registro.
+          await createEvaluacion({
+            miembro_id: s.miembro_id, miembro_nombre: s.miembro_nombre, grupo_id: s.grupo_id,
+            fecha: s.fecha || new Date().toISOString().slice(0, 10), fuente: 'Líder', estado: 'Aprobada',
+            valores: { [s.area]: punt }, comentario: notas, lider_nombre: getCurrentProfile()?.nombre || '',
+            seguimiento_id: s.id,
+          });
+        }
+        if (proxima) {
+          await createSeguimiento({
+            miembro_id: s.miembro_id, miembro_nombre: s.miembro_nombre, grupo_id: s.grupo_id,
+            fecha: proxima, estado: 'Programada', area: s.area, temas: pasos,
+            lider_nombre: getCurrentProfile()?.nombre || '',
+          });
+        }
+        cerrando = null;
+        [seguimientos] = await Promise.all([getSeguimientos(grupoId), cargarPendientes()]);
         render();
-      });
+      } catch (e) {
+        errEl.textContent = e.message; errEl.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Guardar y marcar realizada';
+      }
+    });
+
+    // Al elegir un área, sugerir preguntas guía (sin pisar lo que el líder ya escribió).
+    const selArea = container.querySelector('#sg-area');
+    selArea?.addEventListener('change', () => {
+      const ta = container.querySelector('#sg-preguntas');
+      const sugeridas = (PREGUNTAS_AREA[selArea.value] || []).map(q => `• ${q}`).join('\n');
+      const previas = Object.values(PREGUNTAS_AREA).flat().map(q => `• ${q}`).join('\n');
+      if (!ta.value.trim() || previas.includes(ta.value.trim().split('\n')[0])) ta.value = sugeridas;
     });
 
     container.querySelector('#btn-save-sg')?.addEventListener('click', async () => {
@@ -187,6 +269,8 @@ export async function renderSeguimiento(container, navigate) {
         temas: container.querySelector('#sg-temas').value,
         proximos_pasos: container.querySelector('#sg-pasos').value,
         notas: container.querySelector('#sg-notas').value,
+        area: container.querySelector('#sg-area').value,
+        preguntas: container.querySelector('#sg-preguntas').value,
       };
       if (!fecha) { errEl.textContent = 'La fecha es requerida.'; errEl.classList.remove('hidden'); return; }
       btn.textContent = 'Guardando...'; btn.disabled = true;

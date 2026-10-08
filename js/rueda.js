@@ -40,3 +40,21 @@ export function promedio(valores) {
   const v = AREAS_RUEDA.map(a => valores[a.key]).filter(x => typeof x === 'number');
   return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null;
 }
+
+// Estado de la rueda en un momento dado: para cada área, el último valor aprobado del líder.
+// Permite evaluaciones parciales (una cita = un área) sin perder el resto de la rueda.
+// `evals` debe venir ordenado de más reciente a más antigua; `offset` omite las N más recientes.
+export function snapshot(evals, offset = 0) {
+  const usar = evals.filter(e => e.estado === 'Aprobada' && e.fuente === 'Líder').slice(offset);
+  if (!usar.length) return null;
+  const valores = {};
+  AREAS_RUEDA.forEach(a => { valores[a.key] = usar.find(e => e.valores[a.key] != null)?.valores[a.key] ?? null; });
+  return { valores, fecha: usar[0].fecha };
+}
+
+// Primer y último valor registrado de un área (para ver el avance).
+export function progresoArea(evals, key) {
+  const con = evals.filter(e => e.estado === 'Aprobada' && e.fuente === 'Líder' && e.valores[key] != null);
+  if (!con.length) return null;
+  return { inicio: con[con.length - 1].valores[key], actual: con[0].valores[key], n: con.length };
+}
