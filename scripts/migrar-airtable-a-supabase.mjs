@@ -66,10 +66,15 @@ async function leerAirtable(tabla) {
 }
 
 // ---------- Supabase ----------
+// Las claves nuevas (sb_secret_...) no son JWT: van solo en `apikey`; las antiguas (eyJ...) también como Bearer.
+function authSupabase() {
+  return SERVICE_KEY.startsWith('eyJ') ? { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } : { apikey: SERVICE_KEY };
+}
+
 async function sb(path, { method = 'GET', body, headers = {}, raw } = {}) {
   const r = await fetch(`${SUPABASE_URL}${path}`, {
     method,
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, ...(raw ? {} : { 'Content-Type': 'application/json' }), ...headers },
+    headers: { ...authSupabase(), ...(raw ? {} : { 'Content-Type': 'application/json' }), ...headers },
     body: raw ? body : (body === undefined ? undefined : JSON.stringify(body)),
   });
   const texto = await r.text();
@@ -271,7 +276,7 @@ async function main() {
   for (const t of ['grupos', 'miembros', 'eventos', 'seguimientos', 'evaluaciones', 'clases', 'reuniones', 'asistencias']) {
     let dest = '-';
     if (EJECUTAR) {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${t}?select=id`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Prefer: 'count=exact', Range: '0-0' } });
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${t}?select=id`, { headers: { ...authSupabase(), Prefer: 'count=exact', Range: '0-0' } });
       dest = (r.headers.get('content-range') || '').split('/')[1];
     }
     resumen[t] = { airtable: datos[t].length, supabase: dest };

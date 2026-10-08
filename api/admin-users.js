@@ -15,12 +15,18 @@ class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
+// Las claves nuevas de Supabase (sb_publishable_ / sb_secret_) no son JWT: van solo en
+// `apikey`. Las claves antiguas (eyJ...) también se aceptan como Bearer.
+function cabecerasAuth(key, token) {
+  if (token) return { apikey: key, Authorization: `Bearer ${token}` };
+  return key.startsWith('eyJ') ? { apikey: key, Authorization: `Bearer ${key}` } : { apikey: key };
+}
+
 async function sb(path, { method = 'GET', body, key = SUPABASE_SERVICE_ROLE_KEY, token, headers = {} } = {}) {
   const r = await fetch(`${SUPABASE_URL}${path}`, {
     method,
     headers: {
-      apikey: key,
-      Authorization: `Bearer ${token || key}`,
+      ...cabecerasAuth(key, token),
       'Content-Type': 'application/json',
       ...headers,
     },
@@ -53,7 +59,7 @@ async function audit(caller, accion, entidadId, detalle) {
 
 async function contarAltos() {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/perfiles?select=id&rol=in.(${ROLES_ALTOS.map(x => `"${x}"`).join(',')})`, {
-    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, Prefer: 'count=exact', Range: '0-0' },
+    headers: { ...cabecerasAuth(SUPABASE_SERVICE_ROLE_KEY), Prefer: 'count=exact', Range: '0-0' },
   });
   return Number((r.headers.get('content-range') || '').split('/')[1] || 0);
 }
