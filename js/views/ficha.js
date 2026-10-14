@@ -250,7 +250,7 @@ async function renderRueda(card, m) {
     card.innerHTML = `
       <div class="flex" style="align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
         <div>
-          <div style="font-size:16px;font-weight:700;">Rueda de vida</div>
+          <div style="font-size:16px;font-weight:700;">Estado actual</div>
           <div style="font-size:13px;color:#8a94a8;margin-top:2px;">Evaluación de 9 áreas del 1 al 10${pendientes ? ` · <b style="color:#b9892b;">${pendientes} pendiente(s) de aprobar en Seguimiento</b>` : ''}</div>
         </div>
         <div class="flex gap-8" style="flex-wrap:wrap;">

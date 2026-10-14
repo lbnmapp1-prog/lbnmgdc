@@ -1,9 +1,15 @@
 export const MILESTONES = [
-  { t:'Integración', s:'Alpha / MADE' }, { t:'Bautismo', s:'Bautizado en agua' },
-  { t:'Discipulado', s:'Discipulado completo' }, { t:'Retiro VEL', s:'Vida en el Espíritu' },
-  { t:'Perspectiva', s:'Perspectiva Bíblica' }, { t:'Fundamentos', s:'Fund. del Liderazgo' },
-  { t:'L. de Cuidado', s:'Capacitación GDC' }, { t:'Equipo Base', s:'Servicio activo' },
-  { t:'Líder de Grupo', s:'Multiplicación' },
+  { t:'Integración',      s:'Alpha / MADE'        },
+  { t:'Discipulado',      s:'Discipulado completo' },
+  { t:'Bautismo',         s:'Bautizado en agua'    },
+  { t:'Retiro VEL',       s:'Vida en el Espíritu'  },
+  { t:'Retiro CEC',       s:'Creciendo E/C'        },
+  { t:'Padre Espiritual', s:'Padre espiritual'     },
+  { t:'2 Discípulos',     s:'2 discipulados'       },
+  { t:'Perspectiva',      s:'Perspectiva Bíblica'  },
+  { t:'L. de Cuidado',    s:'Capacitación GDC'     },
+  { t:'Fundamentos',      s:'Fund. del Liderazgo'  },
+  { t:'Líder de Grupo',   s:'Multiplicación'       },
 ];
 
 export const CURSOS = ['Alpha / MADE','Discipulado','Bautizado','Retiro VEL','Padres','2 Discipulados','Retiro Creciendo E/C','Retiro DARTE','Persp. Bíblica','Líder de Cuidado','Fac. Grupos de A.','Líder de Niños','Líder Nueva Gen','Fund. Liderazgo','Pre-Matrimonial','Nuevo Testamento','Antiguo Testamento','Oratoria','Consej. Juvenil','Ayuda P/Padres Adolesc.','Consejería I','Consejería II','Mentoría de Nov.','Arconte','Esc. Plantación'];
