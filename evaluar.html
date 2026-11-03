@@ -313,7 +313,10 @@ function buildUI(nombre){
         p_miembro:miembroId, p_valores:porColumna, p_comentario:document.getElementById('comentario').value||''
       });
       if(error) throw new Error(error.message);
+      // Capturar SVG actual antes de reemplazar el DOM
+      const wheelClone = document.getElementById('wheel') ? document.getElementById('wheel').outerHTML : '';
       app.innerHTML=`<div class="ok-screen">
+        ${wheelClone ? `<div style="display:flex;justify-content:center;margin-bottom:24px;">${wheelClone.replace('<svg ','<svg style="max-width:320px;width:100%;height:auto;" ')}</div>` : ''}
         <p class="ok-icon">🙏</p>
         <h1 style="font-family:var(--display);font-size:2rem;">¡Gracias!</h1>
         <p style="color:var(--muted);max-width:42ch;">Tu evaluación fue enviada. Tu líder la revisará contigo en la próxima conversación.</p>
