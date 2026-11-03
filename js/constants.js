@@ -30,15 +30,14 @@ export const ESTADOS_SEGUIMIENTO = ['Programada', 'Realizada', 'Cancelada'];
 
 // Rueda de vida: 9 áreas evaluadas del 1 al 10. `key` identifica el área en la app (ver AREA_COL para la columna en la base).
 export const AREAS_RUEDA = [
-  { key: 'Dios',       label: 'Relación con Dios' },
-  { key: 'Familia',    label: 'Familia' },
-  { key: 'Relaciones', label: 'Relaciones' },
-  { key: 'Amigos',     label: 'Amigos' },
-  { key: 'Salud',      label: 'Salud' },
-  { key: 'Dinero',     label: 'Dinero' },
-  { key: 'Profesion',  label: 'Profesión' },
-  { key: 'VidaAdulta', label: 'Vida adulta' },
-  { key: 'Ocio',       label: 'Ocio' },
+  { key: 'dios',       label: 'Identidad en Cristo' },
+  { key: 'ocio',       label: 'Ocio' },
+  { key: 'familia',    label: 'Familia de origen' },
+  { key: 'vida_adulta',label: 'Vida adulta' },
+  { key: 'dinero',     label: 'Finanzas' },
+  { key: 'profesion',  label: 'Propósito' },
+  { key: 'relaciones', label: 'Integridad' },
+  { key: 'amigos',     label: 'Hogar' },
 ];
 
 // Preguntas guía por área para preparar la cita de seguimiento (el líder puede editarlas).
