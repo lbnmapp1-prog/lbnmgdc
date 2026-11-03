@@ -10,6 +10,9 @@ import { renderNuevo } from './views/nuevo.js';
 import { renderAdmin } from './views/admin.js';
 import { renderSeguimiento } from './views/seguimiento.js';
 import { renderTemas } from './views/temas.js';
+import { renderOfrendas } from './views/ofrendas.js';
+import { renderPlaneador } from './views/planeador.js';
+import { renderEquipos } from './views/equipos.js';
 
 const PAGE_META = {
   dashboard:    ['Inicio', 'Resumen general del área de Jóvenes Adultos'],
@@ -22,6 +25,9 @@ const PAGE_META = {
   admin:        ['Administración', 'Usuarios y grupos del sistema'],
   seguimiento:  ['Seguimiento', 'Planificador de citas y conversaciones de discipulado'],
   temas:        ['Organizador de Temas', 'Pilares del área y clases programadas'],
+  ofrendas:     ['Ofrendas Misioneras', 'Control de ofrenda por Grupo de Cuidado · Anexo E'],
+  planeador:    ['Planeador Mensual', 'Agenda y planeación de reuniones · Anexo B & C'],
+  equipos:      ['Nuevos Equipos', 'Formato de nuevos equipos de liderazgo · Anexo A'],
 };
 
 let currentProfile = null;
@@ -54,6 +60,9 @@ async function navigate(page, params = {}) {
     case 'admin':       await renderAdmin(content, navigate); break;
     case 'seguimiento': await renderSeguimiento(content, navigate); break;
     case 'temas':       await renderTemas(content, navigate); break;
+    case 'ofrendas':    await renderOfrendas(content, navigate); break;
+    case 'planeador':   await renderPlaneador(content, navigate); break;
+    case 'equipos':     await renderEquipos(content, navigate); break;
     default:            await renderDashboard(content, navigate);
   }
 }
