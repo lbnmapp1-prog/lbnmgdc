@@ -377,3 +377,114 @@ begin new.created_by = coalesce(auth.uid(), new.created_by); return new; end; $$
 
 create trigger trg_eventos_created before insert on eventos
   for each row execute function set_evento_created_by();
+
+-- ================================================================
+-- MÓDULOS HERRAMIENTAS (agregados en la segunda fase)
+-- ================================================================
+
+-- Anexo A: Nuevos Equipos de Liderazgo
+create table if not exists nuevos_equipos (
+  id          uuid primary key default gen_random_uuid(),
+  grupo_id    uuid references grupos(id) on delete set null,
+  area        text,
+  pastor      text,
+  telefonos   text,
+  lider       text,
+  nuevo_lider text,
+  eq1_lider   text,
+  eq2_nuevo_lider text,
+  motivos_oracion text,
+  anfitrion   text,
+  direccion_anfitrion text,
+  created_by  uuid references auth.users(id),
+  created_at  timestamptz default now()
+);
+alter table nuevos_equipos enable row level security;
+create policy "equipos_select" on nuevos_equipos for select using (es_admin() or grupo_id = auth_grupo_id());
+create policy "equipos_insert" on nuevos_equipos for insert with check (es_admin() or grupo_id = auth_grupo_id());
+create policy "equipos_update" on nuevos_equipos for update using (es_admin() or grupo_id = auth_grupo_id());
+create policy "equipos_delete" on nuevos_equipos for delete using (es_admin() or grupo_id = auth_grupo_id());
+
+-- Anexo B & C: Planeador Mensual
+create table if not exists planeador (
+  id          uuid primary key default gen_random_uuid(),
+  grupo_id    uuid references grupos(id) on delete set null,
+  area        text,
+  lider       text,
+  pastor      text,
+  mes         text,
+  material    text,
+  equipo_base text,
+  created_by  uuid references auth.users(id),
+  created_at  timestamptz default now()
+);
+alter table planeador enable row level security;
+create policy "planeador_select" on planeador for select using (es_admin() or grupo_id = auth_grupo_id());
+create policy "planeador_insert" on planeador for insert with check (es_admin() or grupo_id = auth_grupo_id());
+create policy "planeador_update" on planeador for update using (es_admin() or grupo_id = auth_grupo_id());
+create policy "planeador_delete" on planeador for delete using (es_admin() or grupo_id = auth_grupo_id());
+
+create table if not exists planeador_reuniones (
+  id              uuid primary key default gen_random_uuid(),
+  planeador_id    uuid references planeador(id) on delete cascade,
+  fase            text,
+  fecha           date,
+  refrigerio_resp text, refrigerio_obs text,
+  dinamicas_resp  text, dinamicas_obs  text,
+  adoracion_resp  text, adoracion_obs  text,
+  tema_resp       text, tema_obs       text,
+  reflexion_resp  text, reflexion_obs  text,
+  anuncios_resp   text, anuncios_obs   text
+);
+alter table planeador_reuniones enable row level security;
+create policy "reun_select" on planeador_reuniones for select using (
+  exists (select 1 from planeador p where p.id = planeador_id and (es_admin() or p.grupo_id = auth_grupo_id()))
+);
+create policy "reun_insert" on planeador_reuniones for insert with check (
+  exists (select 1 from planeador p where p.id = planeador_id and (es_admin() or p.grupo_id = auth_grupo_id()))
+);
+create policy "reun_delete" on planeador_reuniones for delete using (
+  exists (select 1 from planeador p where p.id = planeador_id and (es_admin() or p.grupo_id = auth_grupo_id()))
+);
+
+-- Anexo E: Ofrendas Misioneras
+create table if not exists ofrendas (
+  id                  uuid primary key default gen_random_uuid(),
+  grupo_id            uuid references grupos(id) on delete set null,
+  grupo_nombre        text,
+  lider_nombre        text,
+  encargado           text,
+  pastor              text,
+  fecha               date,
+  nro_miembros        integer default 0,
+  aporte_lider        numeric default 0,
+  total_ofrenda       numeric default 0,
+  fecha_entrega_lider date,
+  fecha_envio_area    date,
+  created_by          uuid references auth.users(id),
+  created_at          timestamptz default now()
+);
+alter table ofrendas enable row level security;
+create policy "ofrendas_select" on ofrendas for select using (es_admin() or grupo_id = auth_grupo_id());
+create policy "ofrendas_insert" on ofrendas for insert with check (es_admin() or grupo_id = auth_grupo_id());
+create policy "ofrendas_update" on ofrendas for update using (es_admin() or grupo_id = auth_grupo_id());
+create policy "ofrendas_delete" on ofrendas for delete using (es_admin() or grupo_id = auth_grupo_id());
+
+create table if not exists ofrenda_items (
+  id              uuid primary key default gen_random_uuid(),
+  ofrenda_id      uuid references ofrendas(id) on delete cascade,
+  miembro_nombre  text,
+  monto           numeric default 0,
+  nro_transferencia text,
+  fecha           date
+);
+alter table ofrenda_items enable row level security;
+create policy "items_select" on ofrenda_items for select using (
+  exists (select 1 from ofrendas o where o.id = ofrenda_id and (es_admin() or o.grupo_id = auth_grupo_id()))
+);
+create policy "items_insert" on ofrenda_items for insert with check (
+  exists (select 1 from ofrendas o where o.id = ofrenda_id and (es_admin() or o.grupo_id = auth_grupo_id()))
+);
+create policy "items_delete" on ofrenda_items for delete using (
+  exists (select 1 from ofrendas o where o.id = ofrenda_id and (es_admin() or o.grupo_id = auth_grupo_id()))
+);
