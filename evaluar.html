@@ -1,37 +1,344 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="noindex" />
-  <title>Rueda de tu vida</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    :root { --blue:#1e5aa8; --ink:#14223a; --muted:#6b7690; --line:#e3e8f0; }
-    * { box-sizing: border-box; }
-    body { margin:0; background:#f3f5f9; font-family:'IBM Plex Sans',system-ui,sans-serif; color:var(--ink); }
-    .wrap { max-width:560px; margin:0 auto; padding:24px 16px 48px; }
-    h1 { font-size:24px; margin:0 0 6px; letter-spacing:-.4px; }
-    p.lead { margin:0 0 20px; color:var(--muted); font-size:14.5px; line-height:1.5; }
-    .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:12px; }
-    .area-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
-    .area-name { font-weight:600; font-size:15px; }
-    .area-hint { font-size:12.5px; color:var(--muted); margin-bottom:10px; line-height:1.4; }
-    .val { font-weight:700; font-size:20px; color:var(--blue); min-width:28px; text-align:right; }
-    .val.unset { color:#b6bfce; }
-    input[type=range] { width:100%; accent-color:var(--blue); height:28px; }
-    textarea { width:100%; border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; resize:vertical; }
-    button { width:100%; background:var(--blue); color:#fff; border:0; border-radius:12px; padding:14px; font:inherit; font-weight:700; font-size:16px; cursor:pointer; }
-    button:disabled { opacity:.6; cursor:default; }
-    .err { background:#fbeef1; color:#9a3b52; border-radius:10px; padding:10px 12px; font-size:13.5px; margin:10px 0; }
-    .ok { text-align:center; padding:36px 16px; }
-    .hidden { display:none; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Rueda de Crecimiento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,650&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#f2f4f0; --surface:#ffffff; --ink:#1b2420; --muted:#5a6660; --line:#d5dbd4;
+  --accent:#2c6a51; --accent-soft:#dbebe2; --focus:#b4621c; --focus-soft:#f7e6d4; --prev:#7a8781;
+  --display:'Literata',Georgia,'Times New Roman',serif;
+  --body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  --radius:10px;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121815;--surface:#1a221e;--ink:#e6ece8;--muted:#9daaa3;--line:#2d3833;
+    --accent:#6dbd96;--accent-soft:#213a2e;--focus:#e39a57;--focus-soft:#3b2a1a;--prev:#8c9993;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;margin:0}
+.page{max-width:1180px;margin:0 auto;padding-inline:clamp(16px,4vw,40px);padding-block:clamp(24px,5vw,56px) 64px;display:grid;gap:28px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.head{display:grid;gap:10px;max-width:68ch}
+.eyebrow{margin:0;font-size:.78rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+h1{margin:0;font-family:var(--display);font-weight:650;font-size:clamp(1.8rem,5.5vw,3rem);line-height:1.08;letter-spacing:-.01em}
+.lede{margin:0;color:var(--muted);font-size:1.03rem}
+
+button{font:inherit;cursor:pointer}
+.btn{border:0;border-radius:8px;padding:12px 20px;min-height:44px;font-weight:700;background:var(--accent);color:var(--surface);font-size:1rem}
+.btn:hover{opacity:.88}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-full{width:100%;font-size:1.05rem;padding:15px 20px}
+
+.layout{display:grid;gap:28px;align-items:start}
+@media(min-width:900px){
+  .layout{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)}
+  .wheel-panel{position:sticky;top:calc(env(safe-area-inset-top,0px)+16px)}
+}
+.wheel-panel{display:grid;gap:16px;min-width:0}
+
+#wheel{width:100%;height:auto;display:block;touch-action:manipulation;cursor:pointer;user-select:none}
+.ring{fill:none;stroke:var(--line);stroke-width:1}
+.ring-strong{stroke:var(--muted);stroke-opacity:.45}
+.spoke{stroke:var(--line);stroke-width:1}
+.tick{fill:var(--muted);font-family:var(--mono);font-size:10px}
+.wedge{fill:var(--accent);fill-opacity:.82;stroke:var(--surface);stroke-width:1.5;transition:d .35s ease}
+.wedge.is-focus{fill:var(--focus);fill-opacity:.9}
+.lbl{fill:var(--ink);font-family:var(--body);font-size:17px;font-weight:600}
+.lbl-score{fill:var(--muted);font-family:var(--mono);font-size:14px;font-weight:500}
+.lbl.is-focus,.lbl-score.is-focus{fill:var(--focus)}
+
+.summary{display:grid;gap:12px;padding:16px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--line)}
+.summary p{margin:0}
+.sum-label{display:block;font-size:.74rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sum-big{font-family:var(--display);font-size:1.9rem;font-weight:650;line-height:1.1;font-variant-numeric:tabular-nums}
+.sum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.sum-focus{padding:12px;border-radius:8px;background:var(--focus-soft)}
+.sum-focus strong{color:var(--focus)}
+.sum-focus p{margin-top:4px;font-size:.92rem}
+
+.axes{display:grid;gap:14px;min-width:0}
+.axis{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:grid;gap:12px;min-width:0;transition:border-color .3s,box-shadow .3s}
+.axis.is-active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.axis.is-focus{border-color:var(--focus)}
+.axis-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.axis h2{margin:0;font-family:var(--display);font-weight:650;font-size:1.2rem;line-height:1.2}
+.axis-score{font-family:var(--mono);font-size:1rem;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.axis-score b{color:var(--ink);font-size:1.35rem}
+.axis.is-focus .axis-score b{color:var(--focus)}
+.tag{font-family:var(--body);font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--focus);margin-right:8px}
+.qs{margin:0;padding-left:1.1em;display:grid;gap:4px}
+.qs li::marker{color:var(--accent)}
+.anchors{margin:0;display:grid;gap:6px;padding:12px;border-radius:8px;background:var(--bg)}
+.anchors-title{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.anchors div{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:baseline}
+.anchors dt{font-family:var(--mono);font-weight:500;color:var(--accent);text-align:right}
+.anchors dd{margin:0;font-size:.92rem;min-width:0}
+.scale{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.scale input{position:absolute;opacity:0;pointer-events:none}
+.scale label{display:grid;place-items:center;min-height:40px;border-radius:6px;border:1px solid var(--line);font-family:var(--mono);font-size:.9rem;cursor:pointer;color:var(--muted);transition:background .15s,color .15s}
+.scale label:hover{border-color:var(--accent);color:var(--ink)}
+.scale input:checked + label{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
+.axis.is-focus .scale input:checked + label{background:var(--focus);border-color:var(--focus)}
+.scale input:focus-visible + label{outline:3px solid var(--accent);outline-offset:2px}
+.scale-ends{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:-6px}
+
+.comment-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.comment-wrap label{display:block;font-weight:600;margin-bottom:8px;font-size:.95rem}
+textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;font-size:.95rem;resize:vertical;background:var(--bg);color:var(--ink);outline:none}
+textarea:focus{border-color:var(--accent)}
+
+.err-msg{background:#fbeef1;color:#9a3b52;border-radius:var(--radius);padding:10px 14px;font-size:.92rem}
+.ok-screen{text-align:center;padding:48px 16px;display:grid;gap:16px;justify-items:center}
+.ok-icon{font-size:3rem}
+.loading{text-align:center;padding:60px 16px;color:var(--muted)}
+
+@media(max-width:420px){
+  .scale{gap:3px}
+  .scale label{min-height:38px;font-size:.82rem}
+  .axis{padding:14px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{transition:none!important;scroll-behavior:auto!important}
+}
+</style>
 </head>
 <body>
-  <div class="wrap" id="app"><p class="lead">Cargando…</p></div>
-  <script type="module" src="js/evaluar.js"></script>
+<div class="page" id="app">
+  <p class="loading">Cargando…</p>
+</div>
+<script type="module">
+import { supabase, CONFIGURADO } from './js/supabase.js';
+
+const AXES = [
+  {id:'dios', col:'dios', name:'Identidad en Cristo', label:'Identidad',
+   q:['¿Sé quién soy en Cristo, o mi valor depende de lo que logro y de lo que opinan otros?','¿Tengo un tiempo con Dios constante, y mi fe decide cosas concretas de mi semana?'],
+   a:{2:'Mi valor depende de lo que logro o de lo que opinan los demás.',5:'Sé lo que la Palabra dice de mí, pero bajo presión vuelvo a buscar aprobación.',9:'Sé quién soy en Cristo, y eso decide cómo respondo al fracaso, al éxito y al rechazo.'}},
+  {id:'otros', col:'amigos', name:'Relación con otros', label:'Otros',
+   q:['¿Hay al menos dos hombres que saben cómo estoy de verdad?','¿Quién me puede confrontar sin que yo me aleje?'],
+   a:{2:'Estoy aislado. Nadie sabe realmente cómo estoy.',5:'Tengo amigos y comparto con ellos, pero no me abro en lo profundo.',9:'Tengo hermanos que me conocen, me confrontan y a quienes rindo cuentas.'}},
+  {id:'familia', col:'familia', name:'Familia de origen', label:'Familia',
+   q:['¿Hay algo con mi padre o mi madre que todavía decide cómo reacciono?','¿Honro a mis padres y a la vez tengo límites sanos con ellos?'],
+   a:{2:'Hay heridas con mi padre o mi madre que siguen decidiendo cómo reacciono.',5:'Las reconozco y las estoy trabajando, en un curso o con alguien.',9:'He perdonado, honro a mis padres y tengo límites sanos con ellos.'}},
+  {id:'adulta', col:'vida_adulta', name:'Vida adulta', label:'Vida adulta',
+   q:['¿Qué cosas de mi vida todavía resuelven otros por mí?','¿Cumplo lo que prometo, también en lo pequeño?'],
+   a:{2:'Otros resuelven por mí lo básico: casa, comida, trámites.',5:'Me hago cargo de lo mío, pero me cuesta la constancia en hábitos, salud y orden.',9:'Vivo de forma autónoma, cumplo lo que prometo y cuido mi cuerpo y mi tiempo.'}},
+  {id:'finanzas', col:'dinero', name:'Finanzas', label:'Finanzas',
+   q:['¿Sé cuánto gano, cuánto gasto y en qué?','¿Podría sostenerme solo si mañana tuviera que hacerlo?'],
+   a:{2:'Dependo de mi familia para lo básico.',5:'Tengo ingreso estable, pero no ahorro ni llevo presupuesto.',9:'Me sostengo solo, llevo presupuesto, ahorro y no tengo deudas de consumo.'}},
+  {id:'proposito', col:'profesion', name:'Propósito y trabajo', label:'Propósito',
+   q:['¿Sé para qué estoy en este trabajo, o solo paso el mes?','¿Tengo un plan para dentro de tres años?'],
+   a:{2:'Trabajo solo para pasar el mes, sin dirección.',5:'Tengo un trabajo estable, pero no sé hacia dónde voy.',9:'Sé para qué estoy, crezco en mi oficio y tengo un plan a tres años.'}},
+  {id:'integridad', col:'relaciones', name:'Integridad y sexualidad', label:'Integridad',
+   q:['¿Soy el mismo en público y en privado?','¿Hay hábitos que me controlan y que nadie conoce? ¿Tengo con quién hablarlo con total honestidad?'],
+   a:{2:'Vivo una cosa en público y otra en privado.',5:'Lucho, pero rindo cuentas y voy avanzando.',9:'Soy el mismo en público y en privado: en lo sexual, en el dinero y en mi palabra.'}},
+  {id:'hogar', col:'ocio', name:'Preparación para el hogar', label:'Hogar',
+   q:['¿Qué tipo de esposo quiero ser, y lo estoy practicando hoy?','¿Trato a las mujeres con honra, también cuando nadie me ve?'],
+   a:{2:'No he pensado en qué tipo de esposo quiero ser, ni guío a nadie en lo espiritual.',5:'Sé lo que quiero ser y oro por otros, pero todavía no tomo la iniciativa de guiar.',9:'Guío a otros en oración y en la Palabra, sé servir, liderar y pedir perdón, trato a las mujeres con honra y podría sostener un hogar.'}}
+];
+
+const CX = 200, CY = 200, STEP = 16, RMAX = 160, NS = 'http://www.w3.org/2000/svg';
+const app = document.getElementById('app');
+const miembroId = new URLSearchParams(location.search).get('m') || '';
+let scores = {}, activeTimer;
+
+function esc(v){ return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fail(msg){ app.innerHTML=`<div class="ok-screen"><p class="ok-icon">⚠️</p><h1 style="font-family:var(--display);font-size:1.6rem;">Enlace no válido</h1><p style="color:var(--muted)">${esc(msg)}</p></div>`; }
+
+function svgEl(tag,attrs,text){
+  const n=document.createElementNS(NS,tag);
+  for(const k in attrs) n.setAttribute(k,attrs[k]);
+  if(text!=null) n.textContent=text;
+  return n;
+}
+function polar(r,deg){ const t=deg*Math.PI/180; return [CX+r*Math.cos(t),CY+r*Math.sin(t)]; }
+function startAngle(i){ return -112.5+i*45; }
+function wedgePath(r,i){
+  const s=startAngle(i),a=polar(r,s),b=polar(r,s+45);
+  return 'M'+CX+' '+CY+'L'+a[0].toFixed(2)+' '+a[1].toFixed(2)+'A'+r+' '+r+' 0 0 1 '+b[0].toFixed(2)+' '+b[1].toFixed(2)+'Z';
+}
+
+function focusIds(){
+  const filled=AXES.filter(x=>scores[x.id]);
+  if(filled.length<AXES.length) return [];
+  const mn=Math.min(...AXES.map(x=>scores[x.id]));
+  return AXES.filter(x=>scores[x.id]===mn).map(x=>x.id);
+}
+
+function renderWheel(){
+  const fills=document.getElementById('fills'); fills.textContent='';
+  const labels=document.getElementById('labels'); labels.textContent='';
+  const low=focusIds();
+  AXES.forEach((x,i)=>{
+    if(scores[x.id]) fills.appendChild(svgEl('path',{d:wedgePath(scores[x.id]*STEP,i),'class':'wedge'+(low.includes(x.id)?' is-focus':'')}));
+    const mid=startAngle(i)+22.5, pt=polar(RMAX+24,mid);
+    const c=Math.cos(mid*Math.PI/180), sn=Math.sin(mid*Math.PI/180);
+    const anchor=c>0.3?'start':(c<-0.3?'end':'middle');
+    const y=sn<-0.5?pt[1]-18:(sn>0.5?pt[1]+14:pt[1]-4);
+    const cls=low.includes(x.id)?' is-focus':'';
+    labels.appendChild(svgEl('text',{x:pt[0],y:y,'text-anchor':anchor,'class':'lbl'+cls},x.label));
+    labels.appendChild(svgEl('text',{x:pt[0],y:y+18,'text-anchor':anchor,'class':'lbl-score'+cls},scores[x.id]?scores[x.id]+'/10':'—'));
+  });
+  renderSummary(low);
+  AXES.forEach(x=>{
+    const card=document.getElementById('axis-'+x.id); if(!card) return;
+    const isLow=low.includes(x.id);
+    card.classList.toggle('is-focus',isLow);
+    const sc=document.getElementById('sc-'+x.id);
+    if(sc) sc.innerHTML=(isLow?'<span class="tag">Foco</span>':'')+(scores[x.id]?'<b>'+scores[x.id]+'</b> /10':'—');
+    card.querySelectorAll('.scale input').forEach(inp=>{ inp.checked=+inp.value===scores[x.id]; });
+  });
+}
+
+function renderSummary(low){
+  const sum=document.getElementById('summary'); if(!sum) return;
+  const done=AXES.filter(x=>scores[x.id]).length;
+  if(done<AXES.length){
+    sum.innerHTML='<div><span class="sum-label">Progreso</span><p class="sum-big">'+done+' de '+AXES.length+' áreas</p></div><p>Cuando marques todas verás tu foco del semestre.</p>';
+  } else {
+    const avg=(AXES.reduce((t,x)=>t+scores[x.id],0)/AXES.length).toFixed(1).replace('.',',');
+    const lowAxes=AXES.filter(x=>low.includes(x.id));
+    sum.innerHTML='<div><span class="sum-label">Promedio</span><p class="sum-big">'+avg+' / 10</p></div>'
+      +'<div class="sum-grid"><div class="sum-focus"><span class="sum-label">Tu foco</span><strong>'+lowAxes.map(x=>x.name).join(' y ')+'</strong>'
+      +(lowAxes.length===1?'<p>'+lowAxes[0].q[0]+'</p>':'<p>Con tu líder, elige una de las dos para trabajar.</p>')+'</div></div>';
+  }
+}
+
+function buildUI(nombre){
+  let html=`
+    <header class="head">
+      <p class="eyebrow">Grupo de Cuidado · Jóvenes Adultos</p>
+      <h1>Hola${nombre?', '+esc(nombre):''} 👋</h1>
+      <p class="lede"><strong>El ideal es un hombre de Dios:</strong> identidad en Cristo, carácter, integridad y liderazgo espiritual. Lee las preguntas de cada área, compara con las descripciones y marca del 1 al 10 dónde estás hoy. Sé honesto: no hay respuestas correctas. Tu líder la revisará contigo.</p>
+    </header>
+
+    <div class="layout">
+      <section class="wheel-panel" aria-label="Tu rueda">
+        <svg id="wheel" viewBox="-88 -34 576 468" role="img" aria-label="Rueda de crecimiento">
+          <g id="grid"></g><g id="fills"></g><g id="labels"></g>
+        </svg>
+        <div class="summary" id="summary" aria-live="polite"></div>
+      </section>
+
+      <section class="axes" id="axes-wrap" aria-label="Las ocho áreas">`;
+
+  AXES.forEach(x=>{
+    html+=`<article class="axis" id="axis-${x.id}">
+      <div class="axis-head"><h2>${x.name}</h2><span class="axis-score" id="sc-${x.id}">—</span></div>
+      <ul class="qs">${x.q.map(q=>'<li>'+q+'</li>').join('')}</ul>
+      <dl class="anchors">
+        <span class="anchors-title">Cómo se ve cada nivel</span>
+        ${[2,5,9].map(n=>`<div><dt>${n}</dt><dd>${x.a[n]}</dd></div>`).join('')}
+      </dl>
+      <fieldset class="scale"><legend class="sr">Tu número en ${x.name}</legend>
+        ${Array.from({length:10},(_,n)=>`<input type="radio" name="s-${x.id}" id="s-${x.id}-${n+1}" value="${n+1}"><label for="s-${x.id}-${n+1}">${n+1}</label>`).join('')}
+      </fieldset>
+      <div class="scale-ends" aria-hidden="true"><span>Lejos</span><span>Listo</span></div>
+    </article>`;
+  });
+
+  html+=`</section></div>
+
+    <div class="comment-wrap">
+      <label for="comentario">¿Algo más que quieras compartir con tu líder? <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+      <textarea id="comentario" rows="3" maxlength="1000" placeholder="Escribe aquí..."></textarea>
+    </div>
+    <div id="err-msg" style="display:none" class="err-msg"></div>
+    <button class="btn btn-full" id="btn-enviar" disabled>Marca todas las áreas para enviar</button>`;
+
+  app.innerHTML=html;
+
+  // Construir grid SVG
+  const grid=document.getElementById('grid');
+  for(let k=1;k<=10;k++) grid.appendChild(svgEl('circle',{cx:CX,cy:CY,r:k*STEP,'class':'ring'+(k%5===0?' ring-strong':'')}));
+  for(let i=0;i<8;i++){ const e=polar(RMAX,startAngle(i)); grid.appendChild(svgEl('line',{x1:CX,y1:CY,x2:e[0],y2:e[1],'class':'spoke'})); }
+  [2,4,6,8,10].forEach(k=>{ const p=polar(k*STEP-8,-112.5-6); grid.appendChild(svgEl('text',{x:p[0],y:p[1]+3,'text-anchor':'middle','class':'tick'},String(k))); });
+
+  // Clic en rueda
+  const wheelEl=document.getElementById('wheel');
+  wheelEl.addEventListener('click',ev=>{
+    const pt=wheelEl.createSVGPoint(); pt.x=ev.clientX; pt.y=ev.clientY;
+    const loc=pt.matrixTransform(wheelEl.getScreenCTM().inverse());
+    const dx=loc.x-CX,dy=loc.y-CY,r=Math.sqrt(dx*dx+dy*dy);
+    if(r>RMAX+6) return;
+    const deg=(Math.atan2(dy,dx)*180/Math.PI+112.5+720)%360;
+    const i=Math.floor(deg/45),v=Math.min(10,Math.max(1,Math.ceil(r/STEP)));
+    setScore(AXES[i].id,v);
+    const card=document.getElementById('axis-'+AXES[i].id);
+    document.querySelectorAll('.axis.is-active').forEach(c=>c.classList.remove('is-active'));
+    card.classList.add('is-active');
+    clearTimeout(activeTimer); activeTimer=setTimeout(()=>card.classList.remove('is-active'),1600);
+    if(window.matchMedia('(min-width:900px)').matches) card.scrollIntoView({block:'nearest',behavior:'smooth'});
+  });
+
+  // Radios de cada área
+  AXES.forEach(x=>{
+    document.getElementById('axes-wrap').querySelectorAll(`input[name="s-${x.id}"]`).forEach(inp=>{
+      inp.addEventListener('change',()=>setScore(x.id,+inp.value));
+    });
+  });
+
+  // Enviar
+  document.getElementById('btn-enviar').addEventListener('click', async()=>{
+    const errEl=document.getElementById('err-msg');
+    errEl.style.display='none';
+    const btn=document.getElementById('btn-enviar');
+    btn.disabled=true; btn.textContent='Enviando…';
+    try {
+      const porColumna=Object.fromEntries(AXES.map(a=>[a.col,scores[a.id]]));
+      const { error }=await supabase.rpc('evaluacion_publica_enviar',{
+        p_miembro:miembroId, p_valores:porColumna, p_comentario:document.getElementById('comentario').value||''
+      });
+      if(error) throw new Error(error.message);
+      app.innerHTML=`<div class="ok-screen">
+        <p class="ok-icon">🙏</p>
+        <h1 style="font-family:var(--display);font-size:2rem;">¡Gracias!</h1>
+        <p style="color:var(--muted);max-width:42ch;">Tu evaluación fue enviada. Tu líder la revisará contigo en la próxima conversación.</p>
+      </div>`;
+    } catch(e){
+      errEl.textContent=e.message||'Hubo un error. Revisa tu conexión e intenta de nuevo.';
+      errEl.style.display='block';
+      btn.disabled=false; btn.textContent='Enviar evaluación';
+    }
+  });
+
+  renderWheel();
+}
+
+function setScore(id,v){
+  scores[id]=v;
+  const allDone=AXES.every(x=>scores[x.id]);
+  const btn=document.getElementById('btn-enviar');
+  if(btn){ btn.disabled=!allDone; btn.textContent=allDone?'Enviar evaluación':'Marca todas las áreas para enviar'; }
+  renderWheel();
+}
+
+async function init(){
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(miembroId))
+    return fail('Pídele a tu líder que te envíe el enlace correcto.');
+  if(!CONFIGURADO) return fail('El sistema aún no está configurado.');
+  try {
+    const { data, error }=await supabase.rpc('evaluacion_publica_info',{ p_miembro:miembroId });
+    if(error) throw error;
+    if(!data) return fail('Pídele a tu líder que te envíe el enlace de nuevo.');
+    buildUI(data);
+  } catch {
+    fail('No se pudo cargar. Revisa tu conexión e intenta de nuevo.');
+  }
+}
+
+init();
+</script>
 </body>
 </html>
