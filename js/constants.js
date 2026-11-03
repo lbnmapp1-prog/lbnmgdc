@@ -100,6 +100,6 @@ export const PREGUNTAS_AREA = {
 
 // Área de la rueda → columna en la tabla `evaluaciones` (Postgres usa snake_case).
 export const AREA_COL = {
-  Dios: 'dios', Familia: 'familia', Relaciones: 'relaciones', Amigos: 'amigos', Salud: 'salud',
-  Dinero: 'dinero', Profesion: 'profesion', VidaAdulta: 'vida_adulta', Ocio: 'ocio',
+  dios: 'dios', ocio: 'ocio', familia: 'familia', vida_adulta: 'vida_adulta',
+  dinero: 'dinero', profesion: 'profesion', relaciones: 'relaciones', amigos: 'amigos',
 };
