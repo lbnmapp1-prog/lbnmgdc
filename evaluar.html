@@ -313,14 +313,61 @@ function buildUI(nombre){
         p_miembro:miembroId, p_valores:porColumna, p_comentario:document.getElementById('comentario').value||''
       });
       if(error) throw new Error(error.message);
-      // Capturar SVG actual antes de reemplazar el DOM
       const wheelClone = document.getElementById('wheel') ? document.getElementById('wheel').outerHTML : '';
-      app.innerHTML=`<div class="ok-screen">
-        ${wheelClone ? `<div style="display:flex;justify-content:center;margin-bottom:24px;">${wheelClone.replace('<svg ','<svg style="max-width:320px;width:100%;height:auto;" ')}</div>` : ''}
+      const comentarioVal = document.getElementById('comentario').value || '';
+      const avg = (AXES.reduce((t,x)=>t+scores[x.id],0)/AXES.length).toFixed(1);
+      const rowsHtml = AXES.map(x=>`
+        <tr>
+          <td style="font-weight:600;padding:7px 10px;border-bottom:1px solid #e8ecf2;">${x.name}</td>
+          <td style="text-align:center;padding:7px 10px;border-bottom:1px solid #e8ecf2;font-weight:700;color:#1e5aa8;">${scores[x.id]}/10</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e8ecf2;font-size:12px;color:#56607a;">${x.a[scores[x.id]] || (scores[x.id]<=3?x.a[2]:scores[x.id]<=7?x.a[5]:x.a[9])}</td>
+        </tr>`).join('');
+      app.innerHTML=`<div class="ok-screen" style="max-width:640px;margin:0 auto;padding:24px 16px;">
         <p class="ok-icon">🙏</p>
-        <h1 style="font-family:var(--display);font-size:2rem;">¡Gracias!</h1>
-        <p style="color:var(--muted);max-width:42ch;">Tu evaluación fue enviada. Tu líder la revisará contigo en la próxima conversación.</p>
+        <h1 style="font-family:var(--display);font-size:2rem;margin-bottom:6px;">¡Gracias!</h1>
+        <p style="color:var(--muted);max-width:42ch;margin:0 auto 28px;">Tu evaluación fue enviada. Tu líder la revisará contigo en la próxima conversación.</p>
+        ${wheelClone ? `<div style="display:flex;justify-content:center;margin-bottom:28px;">${wheelClone.replace('<svg ','<svg style="max-width:360px;width:100%;height:auto;" ')}</div>` : ''}
+        <div style="background:#f7f9fb;border:1px solid #dde2ea;border-radius:14px;overflow:hidden;margin-bottom:20px;">
+          <div style="background:#0d2440;color:#fff;padding:12px 16px;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
+            <span>Tus resultados · Rueda de Crecimiento</span><span style="background:#1e5aa8;padding:3px 10px;border-radius:20px;">Prom. ${avg}</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13.5px;"><tbody>${rowsHtml}</tbody></table>
+          ${comentarioVal?`<div style="padding:10px 16px;font-size:13px;color:#56607a;border-top:1px solid #e8ecf2;font-style:italic;">"${comentarioVal}"</div>`:''}
+        </div>
+        <button onclick="descargarPDF()" style="background:#1e5aa8;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;margin:0 auto;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descárgalo y compártelo con tu líder
+        </button>
       </div>`;
+      window.descargarPDF = function(){
+        const svgEl = app.querySelector('svg');
+        const svgB64 = svgEl ? 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svgEl.outerHTML))) : '';
+        const rows = AXES.map(x=>`<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;">${x.name}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#1e5aa8;">${scores[x.id]}/10</td><td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:11px;color:#555;">${x.a[scores[x.id]]||(scores[x.id]<=3?x.a[2]:scores[x.id]<=7?x.a[5]:x.a[9])}</td></tr>`).join('');
+        const w = window.open('','_blank');
+        w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Rueda de Crecimiento</title>
+        <style>body{font-family:'Segoe UI',sans-serif;margin:0;padding:24px;color:#14223a;}
+        h1{color:#0d2440;font-size:22px;margin-bottom:4px;}
+        .sub{color:#6b7689;font-size:13px;margin-bottom:20px;}
+        .header{background:#0d2440;color:#fff;padding:10px 14px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;font-weight:700;font-size:13px;}
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        td{padding:6px 10px;border-bottom:1px solid #eee;vertical-align:top;}
+        .avg{background:#1e5aa8;color:#fff;padding:2px 10px;border-radius:20px;font-size:12px;}
+        img{display:block;margin:0 auto 20px;max-width:300px;}
+        .comment{font-style:italic;color:#555;font-size:12px;padding:8px 12px;border-top:1px solid #eee;background:#f9f9f9;}
+        @media print{button{display:none!important;}}
+        </style></head><body>
+        <h1>Rueda de Crecimiento · Pastoreo GDC</h1>
+        <div class="sub">Jóvenes Adultos · Autoevaluación ${new Date().toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'})}</div>
+        ${svgB64?`<img src="${svgB64}" />`:''}
+        <div style="border:1px solid #dde2ea;border-radius:8px;overflow:hidden;margin-bottom:16px;">
+          <div class="header"><span>Resultados por área</span><span class="avg">Promedio ${avg}</span></div>
+          <table><tbody>${rows}</tbody></table>
+          ${comentarioVal?`<div class="comment">"${comentarioVal}"</div>`:''}
+        </div>
+        <script>window.onload=()=>{window.print();}<\/script>
+        </body></html>`);
+        w.document.close();
+      };
     } catch(e){
       errEl.textContent=e.message||'Hubo un error. Revisa tu conexión e intenta de nuevo.';
       errEl.style.display='block';
