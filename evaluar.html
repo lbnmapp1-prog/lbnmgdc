@@ -7,20 +7,20 @@
 <title>Rueda de Crecimiento</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,650&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 :root{
-  --bg:#f2f4f0; --surface:#ffffff; --ink:#1b2420; --muted:#5a6660; --line:#d5dbd4;
-  --accent:#2c6a51; --accent-soft:#dbebe2; --focus:#b4621c; --focus-soft:#f7e6d4; --prev:#7a8781;
-  --display:'Literata',Georgia,'Times New Roman',serif;
-  --body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --bg:#f3f5f9; --surface:#ffffff; --ink:#14223a; --muted:#6b7689; --line:#d7dde6;
+  --accent:#1e5aa8; --accent-soft:#e8f0fb; --focus:#c0392b; --focus-soft:#fdf3f2; --prev:#9aa5b5;
+  --display:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
   --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
   --radius:10px;
 }
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#121815;--surface:#1a221e;--ink:#e6ece8;--muted:#9daaa3;--line:#2d3833;
-    --accent:#6dbd96;--accent-soft:#213a2e;--focus:#e39a57;--focus-soft:#3b2a1a;--prev:#8c9993;
+    --bg:#0d1e38;--surface:#111e35;--ink:#c8d8f0;--muted:#7f96b8;--line:#1f3558;
+    --accent:#4685d6;--accent-soft:#162b50;--focus:#e55c4a;--focus-soft:#3a1818;--prev:#5b7399;
     color-scheme:dark;
   }
 }
@@ -104,6 +104,11 @@ textarea:focus{border-color:var(--accent)}
 .ok-icon{font-size:3rem}
 .loading{text-align:center;padding:60px 16px;color:var(--muted)}
 
+.app-header{background:#0d2440;padding:14px clamp(16px,4vw,40px);display:flex;align-items:center;gap:12px;margin-bottom:0}
+.app-header .logo-box{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#4685d6,#1e5aa8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0}
+.app-header .brand{font-weight:700;font-size:14px;color:#fff;letter-spacing:-.2px}
+.app-header .brand-sub{font-size:11px;color:#8fa8cc}
+
 @media(max-width:420px){
   .scale{gap:3px}
   .scale label{min-height:38px;font-size:.82rem}
@@ -115,6 +120,13 @@ textarea:focus{border-color:var(--accent)}
 </style>
 </head>
 <body>
+<header class="app-header">
+  <div class="logo-box">P</div>
+  <div>
+    <div class="brand">Pastoreo GDC</div>
+    <div class="brand-sub">Jóvenes Adultos · Rueda de Crecimiento</div>
+  </div>
+</header>
 <div class="page" id="app">
   <p class="loading">Cargando…</p>
 </div>
