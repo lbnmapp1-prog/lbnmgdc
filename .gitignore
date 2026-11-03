@@ -4,3 +4,7 @@ node_modules/
 .env.*
 migracion-*.json
 migracion-*.csv
+
+# Local Netlify folder
+.netlify
+# deploy
