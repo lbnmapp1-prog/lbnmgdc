@@ -203,6 +203,7 @@ async function renderRueda(card, m) {
 
   function draw() {
     const auto = evals.filter(e => e.estado === 'Aprobada' && e.fuente === 'Autoevaluación');
+    const autoPendiente = evals.find(e => e.estado === 'Pendiente' && e.fuente === 'Autoevaluación');
     const actual = snapshot(evals, 0);
     const previa = snapshot(evals, 1);
     const autoActual = auto[0];
@@ -211,11 +212,13 @@ async function renderRueda(card, m) {
     const series = [];
     if (previa) series.push({ valores: previa.valores, color: '#9aa5b5', dashed: true });
     if (autoActual) series.push({ valores: autoActual.valores, color: '#9a5b2b' });
+    else if (autoPendiente) series.push({ valores: autoPendiente.valores, color: '#9a5b2b', dashed: true });
     if (actual) series.push({ valores: actual.valores, color: '#1e5aa8' });
 
     const legend = [
       actual && `<span><i style="background:#1e5aa8"></i>Líder · ${esc(actual.fecha)}</span>`,
       autoActual && `<span><i style="background:#9a5b2b"></i>Autoevaluación · ${esc(autoActual.fecha)}</span>`,
+      !autoActual && autoPendiente && `<span><i style="background:#9a5b2b;opacity:.6"></i>Autoevaluación pendiente · ${esc(autoPendiente.fecha)}</span>`,
       previa && `<span><i style="background:#9aa5b5"></i>Evaluación anterior · ${esc(previa.fecha)}</span>`,
     ].filter(Boolean).join('');
 

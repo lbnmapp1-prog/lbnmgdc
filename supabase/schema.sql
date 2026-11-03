@@ -305,7 +305,7 @@ as $$
 declare
   m miembros%rowtype;
   k text;
-  claves text[] := array['dios','familia','relaciones','amigos','salud','dinero','profesion','vida_adulta','ocio'];
+  claves text[] := array['dios','familia','relaciones','amigos','dinero','profesion','vida_adulta','ocio'];
 begin
   select * into m from miembros where id = p_miembro;
   if not found then raise exception 'Enlace inválido.'; end if;
@@ -327,7 +327,7 @@ begin
     dios, familia, relaciones, amigos, salud, dinero, profesion, vida_adulta, ocio, comentario)
   values (m.id, m.nombre, m.grupo_id, current_date, 'Autoevaluación', 'Pendiente',
     (p_valores->>'dios')::int, (p_valores->>'familia')::int, (p_valores->>'relaciones')::int,
-    (p_valores->>'amigos')::int, (p_valores->>'salud')::int, (p_valores->>'dinero')::int,
+    (p_valores->>'amigos')::int, null, (p_valores->>'dinero')::int,
     (p_valores->>'profesion')::int, (p_valores->>'vida_adulta')::int, (p_valores->>'ocio')::int,
     left(coalesce(p_comentario, ''), 1000));
 end;
