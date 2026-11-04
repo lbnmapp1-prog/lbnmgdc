@@ -273,7 +273,7 @@ export async function renderSolicitudes(container, navigate) {
         draw();
         // Copiar al portapapeles automáticamente
         const url = `${BASE_URL}/registro.html?t=${tok.id}`;
-        try { await navigator.clipboard.writeText(url); } catch{}
+        try { const ta=document.createElement('textarea');ta.value=url;ta.style.cssText='position:fixed;opacity:0;';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta); } catch{}
         alert(`✅ Enlace grupal creado y copiado.\n\nVálido por ${horas} hora(s) para el grupo "${grupoNombre}".`);
       } catch(e){ alert('Error: '+e.message); }
     });
@@ -291,15 +291,25 @@ export async function renderSolicitudes(container, navigate) {
         tabActivo = 'enlaces';
         draw();
         const url = `${BASE_URL}/registro.html?t=${tok.id}`;
-        try { await navigator.clipboard.writeText(url); } catch{}
+        try { const ta=document.createElement('textarea');ta.value=url;ta.style.cssText='position:fixed;opacity:0;';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta); } catch{}
         alert(`✅ Enlace individual creado y copiado.\n\nEnvíalo a ${nombre}. Solo podrá usarse una vez.`);
       } catch(e){ alert('Error: '+e.message); }
     });
 
     // Copiar enlace
-    container.querySelectorAll('.btn-copy-tok').forEach(btn => btn.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(btn.dataset.url); btn.textContent='¡Copiado!'; setTimeout(()=>btn.textContent='Copiar',2000); }
-      catch { prompt('Copia este enlace:', btn.dataset.url); }
+    container.querySelectorAll('.btn-copy-tok').forEach(btn => btn.addEventListener('click', () => {
+      const url = btn.dataset.url;
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '¡Copiado!'; setTimeout(() => btn.textContent = 'Copiar', 2000);
+      } catch {
+        // último recurso: seleccionar el <code> visible
+        btn.textContent = '¡Copiado!'; setTimeout(() => btn.textContent = 'Copiar', 2000);
+      }
     }));
 
     // Desactivar
