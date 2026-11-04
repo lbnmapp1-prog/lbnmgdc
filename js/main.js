@@ -13,6 +13,8 @@ import { renderTemas } from './views/temas.js';
 import { renderOfrendas } from './views/ofrendas.js';
 import { renderPlaneador } from './views/planeador.js';
 import { renderEquipos } from './views/equipos.js';
+import { renderSolicitudes } from './views/solicitudes.js';
+import { getRegistrosPendientes } from './db.js';
 
 const PAGE_META = {
   dashboard:    ['Inicio', 'Resumen general del área de Jóvenes Adultos'],
@@ -23,6 +25,7 @@ const PAGE_META = {
   reportes:     ['Reportes', 'Información por Grupo de Cuidado'],
   nuevo:        ['Nuevo registro', 'Ficha Miembro GDC · Anexo D'],
   admin:        ['Administración', 'Usuarios y grupos del sistema'],
+  solicitudes:  ['Solicitudes', 'Inscripciones recibidas por el enlace público'],
   seguimiento:  ['Seguimiento', 'Planificador de citas y conversaciones de discipulado'],
   temas:        ['Organizador de Temas', 'Pilares del área y clases programadas'],
   ofrendas:     ['Ofrendas Misioneras', 'Control de ofrenda por Grupo de Cuidado · Anexo E'],
@@ -58,6 +61,7 @@ async function navigate(page, params = {}) {
     case 'reportes':    await renderReportes(content, navigate, params); break;
     case 'nuevo':       await renderNuevo(content, navigate, params); break;
     case 'admin':       await renderAdmin(content, navigate); break;
+    case 'solicitudes': await renderSolicitudes(content, navigate); break;
     case 'seguimiento': await renderSeguimiento(content, navigate); break;
     case 'temas':       await renderTemas(content, navigate); break;
     case 'ofrendas':    await renderOfrendas(content, navigate); break;
@@ -96,6 +100,16 @@ async function showApp(profile) {
   if (adminNav) adminNav.style.display = isAdmin() ? '' : 'none';
 
   await navigate('dashboard');
+  refreshSolicitudesBadge();
+}
+
+export async function refreshSolicitudesBadge() {
+  try {
+    const items = await getRegistrosPendientes();
+    const n = items.filter(r => r.estado === 'Pendiente').length;
+    const badge = document.getElementById('badge-solicitudes');
+    if (badge) { badge.textContent = n; badge.style.display = n > 0 ? 'inline-flex' : 'none'; }
+  } catch { /* silencioso */ }
 }
 
 // ===== LOGIN =====

@@ -356,6 +356,31 @@ export async function deleteEvaluacion(id) {
   check(await supabase.from('evaluaciones').delete().eq('id', id));
 }
 
+// ===== REGISTROS PENDIENTES =====
+export async function getRegistrosPendientes() {
+  const { data, error } = await supabase
+    .from('registros_pendientes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function updateRegistro(id, patch) {
+  const { data, error } = await supabase
+    .from('registros_pendientes')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteRegistro(id) {
+  check(await supabase.from('registros_pendientes').delete().eq('id', id));
+}
+
 // ===== CLASES (Organizador de Temas: 5 pilares x 5 clases) =====
 const BUCKET = 'clases';
 const URL_VIGENCIA_SEG = 3600;

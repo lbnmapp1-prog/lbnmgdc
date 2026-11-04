@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Registro · Pastoreo GDC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f3f5f9;--surface:#ffffff;--ink:#14223a;--muted:#6b7689;--line:#d7dde6;
+  --accent:#1e5aa8;--accent-soft:#e8f0fb;--err:#c0392b;--err-soft:#fdf3f2;
+  --font:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;--radius:12px;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;margin:0;min-height:100%}
+.app-header{background:#0d2440;color:#fff;display:flex;align-items:center;gap:14px;padding:14px clamp(16px,4vw,40px);position:sticky;top:0;z-index:10}
+.logo-box{width:36px;height:36px;border-radius:9px;background:#1e5aa8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;flex-shrink:0}
+.brand{font-weight:700;font-size:15px;line-height:1.1}
+.brand-sub{font-size:11.5px;opacity:.7}
+.page{max-width:620px;margin:0 auto;padding:clamp(24px,5vw,48px) clamp(16px,4vw,32px) 80px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 24px 28px}
+h2{font-size:22px;font-weight:700;letter-spacing:-.4px;margin:0 0 4px}
+.subtitle{color:var(--muted);font-size:14px;margin:0 0 24px}
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.form-row{display:grid;gap:14px;grid-template-columns:1fr}
+.form-row.two{grid-template-columns:1fr 1fr}
+@media(max-width:480px){.form-row.two{grid-template-columns:1fr}}
+.form-group{display:flex;flex-direction:column;gap:5px}
+label{font-size:13px;font-weight:600;color:#3d4860}
+label .req{color:var(--err)}
+input,select,textarea{width:100%;padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:15px;font-family:var(--font);background:var(--surface);color:var(--ink);outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+input.error,select.error{border-color:var(--err)}
+.field-hint{font-size:11.5px;color:var(--muted);margin-top:2px}
+.field-err{font-size:11.5px;color:var(--err);margin-top:2px;display:none}
+.field-err.show{display:block}
+.btn-submit{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;font-family:var(--font);cursor:pointer;margin-top:22px;transition:opacity .15s}
+.btn-submit:disabled{opacity:.55;cursor:not-allowed}
+.err-box{background:var(--err-soft);border:1px solid #f5c6c0;color:var(--err);border-radius:9px;padding:11px 14px;font-size:14px;margin-top:14px;display:none}
+.err-box.show{display:block}
+.ok-screen{text-align:center;padding:40px 16px 24px}
+.ok-icon{font-size:52px;margin-bottom:12px}
+.ok-screen h1{font-size:1.8rem;font-weight:700;margin-bottom:8px}
+.ok-screen p{color:var(--muted);max-width:38ch;margin:0 auto}
+/* phone input: strip non-numeric visually */
+input[type=tel]{letter-spacing:.5px}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="logo-box">P</div>
+  <div>
+    <div class="brand">Pastoreo GDC</div>
+    <div class="brand-sub">Jóvenes Adultos · Formulario de inscripción</div>
+  </div>
+</header>
+
+<div class="page">
+  <div class="card" id="app">
+    <p style="color:var(--muted);text-align:center;padding:20px 0">Cargando…</p>
+  </div>
+</div>
+
+<script type="module">
+import { supabase, CONFIGURADO } from './js/supabase.js';
+
+const app = document.getElementById('app');
+
+function fail(msg){
+  app.innerHTML = `<div style="text-align:center;padding:32px 0;">
+    <p style="font-size:2rem;margin-bottom:12px;">⚠️</p>
+    <p style="color:var(--muted);">${msg}</p>
+  </div>`;
+}
+
+if(!CONFIGURADO){ fail('El sistema aún no está configurado.'); }
+else { buildForm(); }
+
+function sanitizeText(val){ return val.replace(/[<>"'\\]/g,'').trim(); }
+
+function buildForm(){
+  app.innerHTML = `
+    <h2>Formulario de inscripción</h2>
+    <p class="subtitle">Completa tus datos. Tu líder revisará la información y te confirmará tu ingreso al grupo.</p>
+
+    <div class="section-title">Datos personales</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="f-nombre">Nombre completo <span class="req">*</span></label>
+        <input id="f-nombre" type="text" placeholder="Ej: Juan Pérez" maxlength="100" autocomplete="name" inputmode="text">
+        <span class="field-err" id="err-nombre"></span>
+      </div>
+    </div>
+    <div class="form-row two">
+      <div class="form-group">
+        <label for="f-tel">Teléfono <span class="req">*</span></label>
+        <input id="f-tel" type="tel" placeholder="04140000000" maxlength="20" inputmode="numeric" autocomplete="tel">
+        <span class="field-hint">Solo números, sin espacios ni guiones</span>
+        <span class="field-err" id="err-tel"></span>
+      </div>
+      <div class="form-group">
+        <label for="f-correo">Correo electrónico</label>
+        <input id="f-correo" type="email" placeholder="tu@correo.com" maxlength="100" autocomplete="email" inputmode="email">
+        <span class="field-err" id="err-correo"></span>
+      </div>
+    </div>
+    <div class="form-row two">
+      <div class="form-group">
+        <label for="f-nac">Fecha de nacimiento</label>
+        <input id="f-nac" type="date" max="${new Date().toISOString().slice(0,10)}">
+        <span class="field-err" id="err-nac"></span>
+      </div>
+      <div class="form-group">
+        <label for="f-civil">Estado civil</label>
+        <select id="f-civil">
+          <option value="">— Selecciona —</option>
+          <option>Soltero/a</option>
+          <option>Casado/a</option>
+          <option>Divorciado/a</option>
+          <option>Viudo/a</option>
+          <option>Unión libre</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-title">Información del grupo</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="f-grupo">¿A qué grupo perteneces o quieres unirte?</label>
+        <input id="f-grupo" type="text" placeholder="Nombre del grupo o líder" maxlength="100" inputmode="text">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="f-como">¿Cómo llegaste a GDC?</label>
+        <textarea id="f-como" rows="2" placeholder="Un amigo me invitó, vine a un evento, busqué en redes…" maxlength="300"></textarea>
+        <span class="field-hint">Máx. 300 caracteres</span>
+      </div>
+    </div>
+
+    <div class="err-box" id="err-global"></div>
+    <button class="btn-submit" id="btn-send">Enviar inscripción</button>
+  `;
+
+  // Solo numérico en teléfono
+  document.getElementById('f-tel').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9+]/g, '');
+  });
+
+  // Solo letras/espacios en nombre
+  document.getElementById('f-nombre').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[0-9<>"'\\]/g, '');
+  });
+
+  document.getElementById('btn-send').addEventListener('click', enviar);
+}
+
+function fieldErr(id, msg){
+  const el = document.getElementById('err-'+id);
+  const inp = document.getElementById('f-'+id);
+  if(el){ el.textContent = msg; el.classList.toggle('show', !!msg); }
+  if(inp){ inp.classList.toggle('error', !!msg); }
+}
+
+async function enviar(){
+  // Limpiar errores
+  ['nombre','tel','correo','nac'].forEach(k => fieldErr(k,''));
+  const errGlobal = document.getElementById('err-global');
+  errGlobal.classList.remove('show');
+
+  const nombre   = document.getElementById('f-nombre').value.trim();
+  const telefono = document.getElementById('f-tel').value.replace(/[^0-9+]/g,'');
+  const correo   = document.getElementById('f-correo').value.trim().toLowerCase();
+  const nac      = document.getElementById('f-nac').value;
+  const civil    = document.getElementById('f-civil').value;
+  const grupo    = sanitizeText(document.getElementById('f-grupo').value);
+  const como     = sanitizeText(document.getElementById('f-como').value);
+
+  // Validación cliente
+  let valid = true;
+  if(nombre.length < 2){ fieldErr('nombre','El nombre es requerido.'); valid=false; }
+  if(telefono.length < 7){ fieldErr('tel','Ingresa un teléfono válido (mín. 7 dígitos).'); valid=false; }
+  if(correo && !/^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/.test(correo)){
+    fieldErr('correo','El correo no tiene un formato válido.'); valid=false;
+  }
+  if(nac){
+    const d = new Date(nac);
+    const ahora = new Date();
+    if(d > new Date(ahora - 10*365.25*24*3600*1000) || d < new Date(ahora - 100*365.25*24*3600*1000)){
+      fieldErr('nac','Fecha de nacimiento inválida.'); valid=false;
+    }
+  }
+  if(!valid) return;
+
+  const btn = document.getElementById('btn-send');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+
+  try {
+    const { error } = await supabase.rpc('registro_publico_enviar', {
+      p_datos: { nombre, telefono, correo: correo||null, fecha_nacimiento: nac||null,
+                 estado_civil: civil||null, grupo_nombre: grupo||null, como_llego: como||null }
+    });
+    if(error) throw new Error(error.message);
+
+    app.innerHTML = `<div class="ok-screen">
+      <p class="ok-icon">🎉</p>
+      <h1>¡Listo!</h1>
+      <p>Tu inscripción fue enviada. Tu líder la revisará y te confirmará tu ingreso al grupo de crecimiento.</p>
+    </div>`;
+  } catch(e){
+    errGlobal.textContent = e.message || 'Hubo un error. Revisa tu conexión e intenta de nuevo.';
+    errGlobal.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Enviar inscripción';
+  }
+}
+</script>
+</body>
+</html>
