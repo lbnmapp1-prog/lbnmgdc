@@ -381,6 +381,40 @@ export async function deleteRegistro(id) {
   check(await supabase.from('registros_pendientes').delete().eq('id', id));
 }
 
+export async function getRegistroTokens() {
+  const { data, error } = await supabase
+    .from('registro_tokens')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function createRegistroToken(fields) {
+  const { data, error } = await supabase
+    .from('registro_tokens')
+    .insert(fields)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateRegistroToken(id, patch) {
+  const { data, error } = await supabase
+    .from('registro_tokens')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteRegistroToken(id) {
+  check(await supabase.from('registro_tokens').delete().eq('id', id));
+}
+
 // ===== CLASES (Organizador de Temas: 5 pilares x 5 clases) =====
 const BUCKET = 'clases';
 const URL_VIGENCIA_SEG = 3600;

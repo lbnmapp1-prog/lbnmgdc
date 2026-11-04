@@ -68,6 +68,8 @@ input[type=tel]{letter-spacing:.5px}
 import { supabase, CONFIGURADO } from './js/supabase.js';
 
 const app = document.getElementById('app');
+const tokenId = new URLSearchParams(location.search).get('t') || null;
+let tokenInfo = null; // se llena al validar
 
 function fail(msg){
   app.innerHTML = `<div style="text-align:center;padding:32px 0;">
@@ -77,20 +79,60 @@ function fail(msg){
 }
 
 if(!CONFIGURADO){ fail('El sistema aún no está configurado.'); }
-else { buildForm(); }
+else { init(); }
+
+async function init(){
+  if(tokenId){
+    // Validar el token antes de mostrar el form
+    const { data, error } = await supabase.rpc('registro_token_info', { p_token: tokenId });
+    if(error || !data?.valido){
+      fail(data?.error || 'Enlace no válido. Pídele a tu líder que te envíe uno nuevo.');
+      return;
+    }
+    tokenInfo = data;
+    // Mostrar tiempo restante si es grupal
+    if(tokenInfo.tipo === 'grupal' && tokenInfo.expira_en){
+      const ms = new Date(tokenInfo.expira_en) - new Date();
+      if(ms > 0){
+        const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000);
+        tokenInfo._expiraTexto = h>0 ? `${h}h ${m}min` : `${m} minutos`;
+      }
+    }
+  }
+  buildForm();
+}
 
 function sanitizeText(val){ return val.replace(/[<>"'\\]/g,'').trim(); }
 
 function buildForm(){
+  const esIndividual = tokenInfo?.tipo === 'individual';
+  const esGrupal     = tokenInfo?.tipo === 'grupal';
+  const nombreFijo   = esIndividual ? tokenInfo.nombre_persona : '';
+  const grupoFijo    = tokenInfo?.grupo_nombre || '';
+
+  const bannerGrupal = esGrupal && grupoFijo ? `
+    <div style="background:#e8f0fb;border:1px solid #c0d4f5;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13.5px;color:#1e5aa8;display:flex;align-items:center;gap:10px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.85M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Te estás uniendo al grupo <strong>${grupoFijo}</strong>${tokenInfo._expiraTexto ? ` · Enlace válido por <strong>${tokenInfo._expiraTexto}</strong>` : ''}</span>
+    </div>` : '';
+
+  const bannerIndividual = esIndividual && nombreFijo ? `
+    <div style="background:#e8f0fb;border:1px solid #c0d4f5;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13.5px;color:#1e5aa8;display:flex;align-items:center;gap:10px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+      <span>Hola <strong>${nombreFijo}</strong>, este enlace fue creado especialmente para ti.</span>
+    </div>` : '';
+
   app.innerHTML = `
     <h2>Formulario de inscripción</h2>
     <p class="subtitle">Completa tus datos. Tu líder revisará la información y te confirmará tu ingreso al grupo.</p>
+    ${bannerGrupal}${bannerIndividual}
 
     <div class="section-title">Datos personales</div>
     <div class="form-row">
       <div class="form-group">
         <label for="f-nombre">Nombre completo <span class="req">*</span></label>
-        <input id="f-nombre" type="text" placeholder="Ej: Juan Pérez" maxlength="100" autocomplete="name" inputmode="text">
+        <input id="f-nombre" type="text" placeholder="Ej: Juan Pérez" maxlength="100" autocomplete="name" inputmode="text"
+          value="${nombreFijo}" ${esIndividual && nombreFijo ? 'readonly style="background:#f3f5f9;color:#6b7689;"' : ''}>
         <span class="field-err" id="err-nombre"></span>
       </div>
     </div>
@@ -126,13 +168,14 @@ function buildForm(){
       </div>
     </div>
 
+    ${!grupoFijo ? `
     <div class="section-title">Información del grupo</div>
     <div class="form-row">
       <div class="form-group">
         <label for="f-grupo">¿A qué grupo perteneces o quieres unirte?</label>
         <input id="f-grupo" type="text" placeholder="Nombre del grupo o líder" maxlength="100" inputmode="text">
       </div>
-    </div>
+    </div>` : '<input id="f-grupo" type="hidden" value="">'}
     <div class="form-row">
       <div class="form-group">
         <label for="f-como">¿Cómo llegaste a GDC?</label>
@@ -199,10 +242,12 @@ async function enviar(){
   btn.disabled = true; btn.textContent = 'Enviando…';
 
   try {
-    const { error } = await supabase.rpc('registro_publico_enviar', {
+    const rpcArgs = {
       p_datos: { nombre, telefono, correo: correo||null, fecha_nacimiento: nac||null,
                  estado_civil: civil||null, grupo_nombre: grupo||null, como_llego: como||null }
-    });
+    };
+    if(tokenId) rpcArgs.p_token = tokenId;
+    const { error } = await supabase.rpc('registro_publico_enviar', rpcArgs);
     if(error) throw new Error(error.message);
 
     app.innerHTML = `<div class="ok-screen">
