@@ -99,6 +99,16 @@ export async function renderSolicitudes(container, navigate) {
           ${r.correo?`<div><span style="color:#8a94a8;">Correo:</span> ${esc(r.correo)}</div>`:''}
           ${r.fecha_nacimiento?`<div><span style="color:#8a94a8;">Nac:</span> ${esc(r.fecha_nacimiento)}</div>`:''}
           ${r.estado_civil?`<div><span style="color:#8a94a8;">Civil:</span> ${esc(r.estado_civil)}</div>`:''}
+          ${r.profesion?`<div><span style="color:#8a94a8;">Profesión:</span> ${esc(r.profesion)}</div>`:''}
+          ${r.ocupacion?`<div><span style="color:#8a94a8;">Ocupación:</span> ${esc(r.ocupacion)}</div>`:''}
+          ${r.sede?`<div><span style="color:#8a94a8;">Sede:</span> ${esc(r.sede)}</div>`:''}
+          ${r.bautizado!=null?`<div><span style="color:#8a94a8;">Bautizado:</span> ${r.bautizado?'Sí':'No'}</div>`:''}
+          ${r.tiempo_iglesia?`<div><span style="color:#8a94a8;">Tiempo iglesia:</span> ${esc(r.tiempo_iglesia)}</div>`:''}
+          ${r.nro_hijos!=null?`<div><span style="color:#8a94a8;">Hijos:</span> ${r.nro_hijos}</div>`:''}
+          ${r.temperamentos?.length?`<div><span style="color:#8a94a8;">Temp.:</span> ${r.temperamentos.map(esc).join(', ')}</div>`:''}
+          ${r.nivel_idx!=null?`<div><span style="color:#8a94a8;">Nivel:</span> ${r.nivel_idx}</div>`:''}
+          ${r.cursos_completados?.length?`<div style="grid-column:1/-1;"><span style="color:#8a94a8;">Cursos:</span> ${r.cursos_completados.map(esc).join(' · ')}</div>`:''}
+          ${r.apoyo_completados?.length?`<div style="grid-column:1/-1;"><span style="color:#8a94a8;">G. Apoyo:</span> ${r.apoyo_completados.map(esc).join(' · ')}</div>`:''}
           ${r.como_llego?`<div style="grid-column:1/-1;"><span style="color:#8a94a8;">¿Cómo llegó?</span> ${esc(r.como_llego)}</div>`:''}
         </div>
         ${isPend ? `
@@ -130,11 +140,38 @@ export async function renderSolicitudes(container, navigate) {
       if(!confirm(`¿Aprobar e ingresar a ${btn.dataset.nombre}?`)) return;
       btn.disabled=true; btn.textContent='Procesando…';
       try {
-        await createMiembro({ nombre:btn.dataset.nombre, telefono:btn.dataset.tel,
-          correo:btn.dataset.correo, fecha_nacimiento:btn.dataset.nac,
-          estado_civil:btn.dataset.civil, rol:'Miembro' });
-        await updateRegistro(btn.dataset.id, { estado:'Aprobado' });
-        items = items.map(x => x.id===btn.dataset.id ? {...x,estado:'Aprobado'} : x);
+        const r = items.find(x => x.id === btn.dataset.id);
+        await createMiembro({
+          nombre:         r.nombre,
+          telefono:       r.telefono        || null,
+          correo:         r.correo          || null,
+          fecha_nacimiento: r.fecha_nacimiento || null,
+          estado_civil:   r.estado_civil    || null,
+          profesion:      r.profesion       || null,
+          ocupacion:      r.ocupacion       || null,
+          tiempo_iglesia: r.tiempo_iglesia  || null,
+          nro_hijos:      r.nro_hijos       ?? 0,
+          edades_hijos:   r.edades_hijos    || null,
+          aniversario:    r.aniversario     || null,
+          direccion:      r.direccion       || null,
+          sede:           r.sede            || null,
+          padre_esp:      r.padre_esp       || null,
+          disc_inicio:    r.disc_inicio     || null,
+          disc_fin:       r.disc_fin        || null,
+          bautizado:      r.bautizado       ?? false,
+          dones:          r.dones           || null,
+          habilidades:    r.habilidades     || null,
+          temperamentos:  r.temperamentos   || [],
+          mentor:         r.mentor          || null,
+          oracion:        r.oracion         || null,
+          nivel_idx:      r.nivel_idx       ?? 0,
+          cursos_completados: r.cursos_completados || [],
+          apoyo_completados:  r.apoyo_completados  || [],
+          grupo_id:       r.grupo_id        || null,
+          rol:            'Miembro',
+        });
+        await updateRegistro(r.id, { estado:'Aprobado' });
+        items = items.map(x => x.id===r.id ? {...x,estado:'Aprobado'} : x);
         refreshSolicitudesBadge();
         draw();
       } catch(e){ alert('Error: '+e.message); btn.disabled=false; btn.textContent='✓ Aprobar e ingresar'; }
