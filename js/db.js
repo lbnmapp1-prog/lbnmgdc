@@ -171,14 +171,28 @@ function toMiembroRow(f) {
   };
 }
 
+async function sincronizarNombreGrupo(fields, gMap) {
+  if (fields.rol === 'Líder de Grupo' && fields.grupo_id) {
+    const grupo = gMap[fields.grupo_id];
+    if (grupo) {
+      const nuevoNombre = `${grupo.sede} - ${fields.nombre}`.trim();
+      await supabase.from('grupos').update({ nombre: nuevoNombre }).eq('id', fields.grupo_id);
+    }
+  }
+}
+
 export async function createMiembro(fields) {
   const gMap = await gruposMap();
-  return normMiembro(check(await supabase.from('miembros').insert(toMiembroRow(fields)).select().single()), gMap);
+  const miembro = normMiembro(check(await supabase.from('miembros').insert(toMiembroRow(fields)).select().single()), gMap);
+  await sincronizarNombreGrupo(fields, gMap);
+  return miembro;
 }
 
 export async function updateMiembro(id, fields) {
   const gMap = await gruposMap();
-  return normMiembro(check(await supabase.from('miembros').update(toMiembroRow(fields)).eq('id', id).select().single()), gMap);
+  const miembro = normMiembro(check(await supabase.from('miembros').update(toMiembroRow(fields)).eq('id', id).select().single()), gMap);
+  await sincronizarNombreGrupo(fields, gMap);
+  return miembro;
 }
 
 export async function deleteMiembro(id) {
